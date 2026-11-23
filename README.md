@@ -14,6 +14,10 @@ This project is developed as an academic project to practice **Git and GitHub** 
 - Pass/Fail result
 - Result remarks (Excellent, Very Good, Good, Satisfactory, Needs Improvement, Failed)
 - Reset button to clear all inputs
+- Subject-wise grades for all five subjects
+- Highest and lowest subject marks
+- Average marks rounded to 2 decimal places
+- Result Summary with the number of passed and failed subjects
 
 ## Grading System
 
