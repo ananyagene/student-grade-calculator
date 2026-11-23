@@ -150,11 +150,20 @@ if st.button("Calculate Result"):
 
         # Display marks and grade for each subject
         st.subheader("Subject-Wise Grades")
-        st.write("**Subject 1:**", marks1, "/ 100 - Grade:", get_grade(marks1))
-        st.write("**Subject 2:**", marks2, "/ 100 - Grade:", get_grade(marks2))
-        st.write("**Subject 3:**", marks3, "/ 100 - Grade:", get_grade(marks3))
-        st.write("**Subject 4:**", marks4, "/ 100 - Grade:", get_grade(marks4))
-        st.write("**Subject 5:**", marks5, "/ 100 - Grade:", get_grade(marks5))
+        for index in range(len(subject_names)):
+            if subject_marks[index] >= 40:
+                subject_status = "Pass"
+            else:
+                subject_status = "Fail"
+
+            st.write(
+                "**" + subject_names[index] + ":**",
+                subject_marks[index],
+                "/ 100 - Grade:",
+                get_grade(subject_marks[index]),
+                "- Status:",
+                subject_status,
+            )
 
         # Display marks for all five subjects in a bar chart
         st.subheader("Subject Performance Chart")
