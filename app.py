@@ -2,6 +2,8 @@ import streamlit as st
 import csv
 import io
 from calculations import (
+    are_subject_marks_valid,
+    clean_student_name,
     get_average_marks,
     get_grade,
     get_highest_marks,
@@ -44,17 +46,16 @@ marks5 = st.number_input("Subject 5 Marks", min_value=0, max_value=100, key="mar
 if st.button("Calculate Result"):
 
     # Remove extra spaces and validate the student name
-    name = name.strip()
+    name = clean_student_name(name)
     if name == "":
         st.error("Please enter the student name.")
         st.stop()
 
     # Recheck all subject marks before calculating results
     subject_marks = [marks1, marks2, marks3, marks4, marks5]
-    for marks in subject_marks:
-        if marks < 0 or marks > 100:
-            st.error("Please enter marks for all five subjects between 0 and 100.")
-            st.stop()
+    if not are_subject_marks_valid(subject_marks):
+        st.error("Please enter valid numeric marks for all five subjects between 0 and 100.")
+        st.stop()
 
     # Calculate total marks out of 500
     total = get_total_marks(subject_marks)

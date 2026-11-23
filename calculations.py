@@ -38,3 +38,22 @@ def get_highest_marks(subject_marks):
 
 def get_lowest_marks(subject_marks):
     return min(subject_marks)
+
+
+def clean_student_name(name):
+    if not isinstance(name, str):
+        return ""
+    return name.strip()
+
+
+def are_subject_marks_valid(subject_marks):
+    if len(subject_marks) != 5:
+        return False
+
+    for marks in subject_marks:
+        if isinstance(marks, bool) or not isinstance(marks, (int, float)):
+            return False
+        if marks < 0 or marks > 100:
+            return False
+
+    return True

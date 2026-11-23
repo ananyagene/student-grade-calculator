@@ -1,6 +1,8 @@
 import unittest
 
 from calculations import (
+    are_subject_marks_valid,
+    clean_student_name,
     get_average_marks,
     get_grade,
     get_highest_marks,
@@ -47,6 +49,18 @@ class CalculationTests(unittest.TestCase):
         subject_marks = [80, 70, 90, 60, 85]
         self.assertEqual(get_highest_marks(subject_marks), 90)
         self.assertEqual(get_lowest_marks(subject_marks), 60)
+
+    def test_clean_student_name(self):
+        self.assertEqual(clean_student_name("  Ananya  "), "Ananya")
+        self.assertEqual(clean_student_name("   "), "")
+        self.assertEqual(clean_student_name(None), "")
+
+    def test_subject_marks_validation(self):
+        self.assertTrue(are_subject_marks_valid([0, 40, 59, 100, 75]))
+        self.assertFalse(are_subject_marks_valid([-1, 40, 59, 100, 75]))
+        self.assertFalse(are_subject_marks_valid([0, 40, 59, 101, 75]))
+        self.assertFalse(are_subject_marks_valid([0, 40, "59", 100, 75]))
+        self.assertFalse(are_subject_marks_valid([0, 40, 59, 100]))
 
 
 if __name__ == "__main__":
