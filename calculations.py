@@ -5,12 +5,16 @@ def get_total_marks(subject_marks):
     return sum(subject_marks)
 
 
-def get_percentage(total_marks):
-    return (total_marks / 500) * 100
+def get_percentage(total_marks, subject_count=5):
+    if not are_subject_count_valid(subject_count):
+        raise ValueError("Subject count must be between 3 and 10.")
+    return round((total_marks / (subject_count * 100)) * 100, 2)
 
 
-def get_average_marks(total_marks):
-    return round(total_marks / 5, 2)
+def get_average_marks(total_marks, subject_count=5):
+    if not are_subject_count_valid(subject_count):
+        raise ValueError("Subject count must be between 3 and 10.")
+    return round(total_marks / subject_count, 2)
 
 
 def get_grade(marks):
@@ -59,8 +63,29 @@ def clean_subject_names(subject_names):
     return cleaned_names
 
 
-def are_subject_marks_valid(subject_marks):
-    if len(subject_marks) != 5:
+def are_subject_names_valid(subject_names):
+    if not isinstance(subject_names, list):
+        return False
+    if not are_subject_count_valid(len(subject_names)):
+        return False
+    for name in subject_names:
+        if not isinstance(name, str) or name.strip() == "":
+            return False
+    return True
+
+
+def are_subject_count_valid(subject_count):
+    if isinstance(subject_count, bool) or not isinstance(subject_count, int):
+        return False
+    return 3 <= subject_count <= 10
+
+
+def are_subject_marks_valid(subject_marks, subject_count=None):
+    if subject_count is None:
+        subject_count = 5
+    if not are_subject_count_valid(subject_count):
+        return False
+    if len(subject_marks) != subject_count:
         return False
 
     for marks in subject_marks:

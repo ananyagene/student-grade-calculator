@@ -2,7 +2,9 @@ import unittest
 import math
 
 from calculations import (
+    are_subject_count_valid,
     are_subject_marks_valid,
+    are_subject_names_valid,
     clean_subject_names,
     clean_student_name,
     get_average_marks,
@@ -107,6 +109,40 @@ class CalculationTests(unittest.TestCase):
             get_tied_subject_names(names, lowest_marks, get_lowest_marks(lowest_marks)),
             ["Subject 2", "Subject 3", "Subject 5"],
         )
+
+    def test_variable_subject_counts(self):
+        self.assertTrue(are_subject_count_valid(3))
+        self.assertTrue(are_subject_count_valid(5))
+        self.assertTrue(are_subject_count_valid(10))
+        self.assertFalse(are_subject_count_valid(2))
+        self.assertFalse(are_subject_count_valid(11))
+
+    def test_three_subject_calculation(self):
+        marks = [90, 40, 60]
+        total = get_total_marks(marks)
+        self.assertEqual(total, 190)
+        self.assertEqual(get_percentage(total, 3), 63.33)
+        self.assertEqual(get_average_marks(total, 3), 63.33)
+        self.assertEqual(get_highest_marks(marks), 90)
+        self.assertEqual(get_lowest_marks(marks), 40)
+
+    def test_ten_subject_calculation(self):
+        marks = [100, 90, 80, 70, 60, 50, 40, 30, 20, 10]
+        total = get_total_marks(marks)
+        self.assertEqual(total, 550)
+        self.assertEqual(get_percentage(total, 10), 55.0)
+        self.assertEqual(get_average_marks(total, 10), 55.0)
+        self.assertEqual(get_highest_marks(marks), 100)
+        self.assertEqual(get_lowest_marks(marks), 10)
+
+    def test_dynamic_marks_and_names_validation(self):
+        names = ["Python", "DSA", "Data Science"]
+        marks = [80, 70, 90]
+        self.assertTrue(are_subject_names_valid(names))
+        self.assertTrue(are_subject_marks_valid(marks, 3))
+        self.assertFalse(are_subject_marks_valid(marks, 5))
+        self.assertFalse(are_subject_names_valid(["Python", "", "Data Science"]))
+        self.assertFalse(are_subject_marks_valid([80, 70], 3))
 
 
 if __name__ == "__main__":
