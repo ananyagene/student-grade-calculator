@@ -1,4 +1,5 @@
 import math
+import re
 
 
 def get_total_marks(subject_marks):
@@ -51,6 +52,29 @@ def clean_student_name(name):
     if not isinstance(name, str):
         return ""
     return name.strip()
+
+
+def clean_roll_number(roll_number):
+    if not isinstance(roll_number, str):
+        return ""
+    return roll_number.strip()
+
+
+def is_valid_academic_year(academic_year):
+    if not isinstance(academic_year, str):
+        return False
+
+    academic_year = academic_year.strip()
+    if not re.fullmatch(r"\d{4}-\d{4}", academic_year):
+        return False
+
+    first_year = int(academic_year[:4])
+    second_year = int(academic_year[5:])
+    return second_year == first_year + 1
+
+
+def get_semester_options():
+    return [f"Semester {semester}" for semester in range(1, 9)]
 
 
 def clean_subject_names(subject_names):

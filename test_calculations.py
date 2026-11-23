@@ -7,6 +7,7 @@ from calculations import (
     are_subject_names_valid,
     clean_subject_names,
     clean_student_name,
+    clean_roll_number,
     get_average_marks,
     get_grade,
     get_highest_marks,
@@ -15,6 +16,8 @@ from calculations import (
     get_subject_status,
     get_tied_subject_names,
     get_total_marks,
+    get_semester_options,
+    is_valid_academic_year,
 )
 
 
@@ -143,6 +146,24 @@ class CalculationTests(unittest.TestCase):
         self.assertFalse(are_subject_marks_valid(marks, 5))
         self.assertFalse(are_subject_names_valid(["Python", "", "Data Science"]))
         self.assertFalse(are_subject_marks_valid([80, 70], 3))
+
+    def test_roll_number_validation(self):
+        self.assertEqual(clean_roll_number("  "), "")
+        self.assertEqual(clean_roll_number("  ROLL001  "), "ROLL001")
+        self.assertEqual(clean_roll_number("00123"), "00123")
+
+    def test_academic_year_validation(self):
+        self.assertTrue(is_valid_academic_year("2026-2027"))
+        self.assertTrue(is_valid_academic_year(" 2025-2026 "))
+        self.assertFalse(is_valid_academic_year("2026"))
+        self.assertFalse(is_valid_academic_year("2026-2028"))
+        self.assertFalse(is_valid_academic_year("26-27"))
+
+    def test_semester_options(self):
+        semesters = get_semester_options()
+        self.assertEqual(len(semesters), 8)
+        self.assertEqual(semesters[0], "Semester 1")
+        self.assertEqual(semesters[-1], "Semester 8")
 
 
 if __name__ == "__main__":

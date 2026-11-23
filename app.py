@@ -7,6 +7,7 @@ from calculations import (
     are_subject_marks_valid,
     are_subject_names_valid,
     clean_subject_names,
+    clean_roll_number,
     clean_student_name,
     get_average_marks,
     get_grade,
@@ -16,6 +17,8 @@ from calculations import (
     get_subject_status,
     get_tied_subject_names,
     get_total_marks,
+    get_semester_options,
+    is_valid_academic_year,
 )
 
 
@@ -25,6 +28,9 @@ st.write("Welcome! Enter your details and marks to calculate your grade.")
 
 def reset_fields():
     st.session_state["name"] = ""
+    st.session_state["roll_number"] = ""
+    st.session_state["semester"] = "Semester 1"
+    st.session_state["academic_year"] = "2026-2027"
     st.session_state["subject_count"] = 5
     for index in range(1, 11):
         st.session_state[f"subject{index}_name"] = f"Subject {index}"
@@ -34,6 +40,17 @@ def reset_fields():
 st.button("Reset", on_click=reset_fields)
 
 name = st.text_input("Enter Student Name", key="name")
+st.session_state.setdefault("roll_number", "")
+st.session_state.setdefault("semester", "Semester 1")
+st.session_state.setdefault("academic_year", "2026-2027")
+
+roll_number = st.text_input("Roll Number", key="roll_number")
+semester = st.selectbox(
+    "Semester",
+    get_semester_options(),
+    key="semester",
+)
+academic_year = st.text_input("Academic Year", key="academic_year")
 
 subject_count = st.number_input(
     "Number of Subjects",
@@ -72,6 +89,16 @@ if st.button("Calculate Result"):
     name = clean_student_name(name)
     if name == "":
         st.error("Please enter the student name.")
+        st.stop()
+
+    roll_number = clean_roll_number(roll_number)
+    if roll_number == "":
+        st.error("Please enter the roll number.")
+        st.stop()
+
+    academic_year = academic_year.strip()
+    if not is_valid_academic_year(academic_year):
+        st.error("Please enter a valid academic year in YYYY-YYYY format with consecutive years.")
         st.stop()
 
     subject_names = clean_subject_names(subject_names_input)
@@ -152,7 +179,11 @@ if st.button("Calculate Result"):
 
     st.success("Result Calculated Successfully!")
     st.subheader("Student Result")
+    st.subheader("Student Information")
     st.write("**Student Name:**", name)
+    st.write("**Roll Number:**", roll_number)
+    st.write("**Semester:**", semester)
+    st.write("**Academic Year:**", academic_year)
 
     metric1, metric2, metric3, metric4 = st.columns(4)
     metric1.metric("Total Marks", f"{total} / {subject_count * 100}")
@@ -245,6 +276,9 @@ if st.button("Calculate Result"):
     csv_writer = csv.writer(csv_buffer)
     csv_writer.writerow(["Field", "Value", "Grade", "Status"])
     csv_writer.writerow(["Student Name", name, "", ""])
+    csv_writer.writerow(["Roll Number", roll_number, "", ""])
+    csv_writer.writerow(["Semester", semester, "", ""])
+    csv_writer.writerow(["Academic Year", academic_year, "", ""])
     for index in range(subject_count):
         subject_status = get_subject_status(subject_marks[index])
         csv_writer.writerow([
