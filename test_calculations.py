@@ -22,6 +22,10 @@ from calculations import (
     is_valid_academic_year,
     is_duplicate_saved_result,
     save_student_result,
+    find_saved_student,
+    get_student_history,
+    update_saved_student,
+    reset_result_form_state,
     get_saved_student_table,
     search_saved_students,
     get_class_leaderboard,
@@ -491,6 +495,210 @@ class CalculationTests(unittest.TestCase):
         original = [dict(student) for student in students]
         search_saved_students(students, "Ananya")
         self.assertEqual(students, original)
+
+    def test_empty_result_history(self):
+        history = []
+        self.assertEqual(
+            get_student_history(history, "ROLL001", "Semester 1", "2026-2027"),
+            [],
+        )
+
+    def test_first_save_does_not_create_history(self):
+        saved = []
+        history = []
+        result = {
+            "student_name": "Ananya",
+            "roll_number": "ROLL001",
+            "semester": "Semester 1",
+            "academic_year": "2026-2027",
+            "total_marks": 400,
+            "percentage": 80,
+            "overall_grade": "B",
+            "overall_result": "Pass",
+        }
+        self.assertTrue(save_student_result(saved, result))
+        self.assertEqual(history, [])
+        self.assertEqual(len(saved), 1)
+
+    def test_update_existing_result_preserves_previous_snapshot(self):
+        saved = [{
+            "student_name": "Ananya",
+            "roll_number": "ROLL001",
+            "semester": "Semester 1",
+            "academic_year": "2026-2027",
+            "total_marks": 400,
+            "percentage": 80,
+            "overall_grade": "B",
+            "overall_result": "Pass",
+        }]
+        history = []
+        updated = dict(saved[0])
+        updated["total_marks"] = 450
+        updated["percentage"] = 90
+        updated["overall_grade"] = "A"
+
+        self.assertTrue(update_saved_student(saved, history, updated, "2026-11-24 10:00:00"))
+        self.assertEqual(saved[0]["percentage"], 90)
+        self.assertEqual(history[0]["percentage"], 80)
+        self.assertEqual(history[0]["version"], 1)
+        self.assertEqual(history[0]["timestamp"], "2026-11-24 10:00:00")
+
+    def test_multiple_updates_increase_versions(self):
+        saved = [{
+            "student_name": "Ananya",
+            "roll_number": "ROLL001",
+            "semester": "Semester 1",
+            "academic_year": "2026-2027",
+            "total_marks": 400,
+            "percentage": 80,
+            "overall_grade": "B",
+            "overall_result": "Pass",
+        }]
+        history = []
+
+        second = dict(saved[0])
+        second["total_marks"] = 450
+        second["percentage"] = 90
+        second["overall_grade"] = "A"
+        update_saved_student(saved, history, second, "2026-11-24 10:00:00")
+
+        third = dict(saved[0])
+        third["total_marks"] = 475
+        third["percentage"] = 95
+        update_saved_student(saved, history, third, "2026-11-24 11:00:00")
+
+        self.assertEqual(
+            [entry["version"] for entry in history],
+            [1, 2],
+        )
+        self.assertEqual(saved[0]["percentage"], 95)
+
+    def test_history_is_independent_for_different_students(self):
+        saved = [
+            {
+                "student_name": "Ananya",
+                "roll_number": "ROLL001",
+                "semester": "Semester 1",
+                "academic_year": "2026-2027",
+                "total_marks": 400,
+                "percentage": 80,
+                "overall_grade": "B",
+                "overall_result": "Pass",
+            },
+            {
+                "student_name": "Rohan",
+                "roll_number": "ROLL002",
+                "semester": "Semester 1",
+                "academic_year": "2026-2027",
+                "total_marks": 300,
+                "percentage": 60,
+                "overall_grade": "D",
+                "overall_result": "Pass",
+            },
+        ]
+        history = []
+
+        ananya_update = dict(saved[0])
+        ananya_update["percentage"] = 90
+        rohan_update = dict(saved[1])
+        rohan_update["percentage"] = 70
+        update_saved_student(saved, history, ananya_update, "2026-11-24 10:00:00")
+        update_saved_student(saved, history, rohan_update, "2026-11-24 10:05:00")
+
+        ananya_history = get_student_history(
+            history, "ROLL001", "Semester 1", "2026-2027"
+        )
+        rohan_history = get_student_history(
+            history, "ROLL002", "Semester 1", "2026-2027"
+        )
+        self.assertEqual(len(ananya_history), 1)
+        self.assertEqual(len(rohan_history), 1)
+        self.assertEqual(ananya_history[0]["percentage"], 80)
+        self.assertEqual(rohan_history[0]["percentage"], 60)
+
+    def test_update_missing_student_returns_false(self):
+        saved = []
+        history = []
+        result = {
+            "student_name": "Ananya",
+            "roll_number": "ROLL001",
+            "semester": "Semester 1",
+            "academic_year": "2026-2027",
+            "total_marks": 400,
+            "percentage": 80,
+            "overall_grade": "B",
+            "overall_result": "Pass",
+        }
+        self.assertFalse(update_saved_student(saved, history, result))
+        self.assertEqual(saved, [])
+        self.assertEqual(history, [])
+
+    def test_history_snapshot_is_immutable_and_active_is_separate(self):
+        saved = [{
+            "student_name": "Ananya",
+            "roll_number": "ROLL001",
+            "semester": "Semester 1",
+            "academic_year": "2026-2027",
+            "total_marks": 400,
+            "percentage": 80,
+            "overall_grade": "B",
+            "overall_result": "Pass",
+        }]
+        history = []
+        updated = dict(saved[0])
+        updated["percentage"] = 95
+        update_saved_student(saved, history, updated, "2026-11-24 10:00:00")
+
+        updated["percentage"] = 10
+        self.assertEqual(saved[0]["percentage"], 95)
+        self.assertEqual(history[0]["percentage"], 80)
+
+    def test_active_records_remain_separate_from_history(self):
+        saved = [{
+            "student_name": "Ananya",
+            "roll_number": "ROLL001",
+            "semester": "Semester 1",
+            "academic_year": "2026-2027",
+            "total_marks": 400,
+            "percentage": 80,
+            "overall_grade": "B",
+            "overall_result": "Pass",
+        }]
+        history = []
+        updated = dict(saved[0])
+        updated["percentage"] = 95
+        updated["total_marks"] = 475
+        update_saved_student(saved, history, updated, "2026-11-24 10:00:00")
+
+        leaderboard = get_class_leaderboard(saved)
+        analytics = get_class_analytics(saved)
+        self.assertEqual(leaderboard[0]["Percentage"], 95)
+        self.assertEqual(analytics["highest_percentage"], 95)
+        self.assertEqual(history[0]["percentage"], 80)
+
+    def test_reset_preserves_saved_students_and_history(self):
+        session_state = {
+            "name": "Ananya",
+            "roll_number": "ROLL001",
+            "semester": "Semester 5",
+            "academic_year": "2025-2026",
+            "last_calculated_result": {"percentage": 90},
+            "save_message": "Saved",
+            "subject_count": 8,
+            "saved_students": [{"roll_number": "ROLL001"}],
+            "result_history": [{"version": 1}],
+        }
+
+        reset_result_form_state(session_state)
+
+        self.assertEqual(session_state["name"], "")
+        self.assertEqual(session_state["roll_number"], "")
+        self.assertEqual(session_state["semester"], "Semester 1")
+        self.assertEqual(session_state["academic_year"], "2026-2027")
+        self.assertEqual(session_state["subject_count"], 5)
+        self.assertIsNone(session_state["last_calculated_result"])
+        self.assertEqual(session_state["saved_students"], [{"roll_number": "ROLL001"}])
+        self.assertEqual(session_state["result_history"], [{"version": 1}])
 
     def test_report_card_generation_for_subject_counts(self):
         for subject_count in (3, 5, 10):

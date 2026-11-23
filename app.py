@@ -25,6 +25,10 @@ from calculations import (
     get_class_leaderboard,
     get_class_analytics,
     save_student_result,
+    find_saved_student,
+    get_student_history,
+    update_saved_student,
+    reset_result_form_state,
 )
 
 
@@ -33,22 +37,15 @@ st.write("Welcome! Enter your details and marks to calculate your grade.")
 
 
 def reset_fields():
-    st.session_state["name"] = ""
-    st.session_state["roll_number"] = ""
-    st.session_state["semester"] = "Semester 1"
-    st.session_state["academic_year"] = "2026-2027"
-    st.session_state["last_calculated_result"] = None
-    st.session_state["save_message"] = ""
-    st.session_state["subject_count"] = 5
-    for index in range(1, 11):
-        st.session_state[f"subject{index}_name"] = f"Subject {index}"
-        st.session_state[f"marks{index}"] = 0
+    reset_result_form_state(st.session_state)
 
 
 st.button("Reset", on_click=reset_fields)
 st.session_state.setdefault("saved_students", [])
 st.session_state.setdefault("last_calculated_result", None)
 st.session_state.setdefault("save_message", "")
+st.session_state.setdefault("result_history", [])
+st.session_state.setdefault("history_message", "")
 
 name = st.text_input("Enter Student Name", key="name")
 st.session_state.setdefault("roll_number", "")
@@ -362,6 +359,95 @@ if st.button("Calculate Result"):
         "subject_marks": list(subject_marks),
     }
     st.session_state["save_message"] = ""
+
+st.subheader("Result History")
+
+if st.session_state["saved_students"]:
+    history_options = []
+    for index, student in enumerate(st.session_state["saved_students"]):
+        history_options.append(
+            f"{student['student_name']} | {student['roll_number']} | "
+            f"{student['semester']} | {student['academic_year']}"
+        )
+
+    selected_history = st.selectbox(
+        "Select Saved Student",
+        history_options,
+        key="history_student",
+    )
+    selected_index = history_options.index(selected_history)
+    selected_student = st.session_state["saved_students"][selected_index]
+
+    st.write("**Latest Active Result**")
+    st.write(
+        selected_student["student_name"],
+        "|",
+        selected_student["roll_number"],
+        "|",
+        selected_student["semester"],
+        "|",
+        selected_student["academic_year"],
+        "|",
+        "Total:",
+        selected_student["total_marks"],
+        "|",
+        selected_student["percentage"],
+        "%",
+        "|",
+        selected_student["overall_grade"],
+        "|",
+        selected_student["overall_result"],
+    )
+
+    previous_history = get_student_history(
+        st.session_state["result_history"],
+        selected_student["roll_number"],
+        selected_student["semester"],
+        selected_student["academic_year"],
+    )
+    if previous_history:
+        history_table = []
+        for entry in previous_history:
+            history_table.append({
+                "Version": entry["version"],
+                "Timestamp": entry["timestamp"],
+                "Student Name": entry["student_name"],
+                "Roll Number": entry["roll_number"],
+                "Semester": entry["semester"],
+                "Academic Year": entry["academic_year"],
+                "Total Marks": entry["total_marks"],
+                "Percentage": entry["percentage"],
+                "Overall Grade": entry["overall_grade"],
+                "Pass/Fail": entry["overall_result"],
+            })
+        st.table(history_table)
+    else:
+        st.caption("No previous versions saved for this student.")
+
+    if st.session_state["last_calculated_result"] is not None:
+        if st.button("Update Existing Result"):
+            updated = update_saved_student(
+                st.session_state["saved_students"],
+                st.session_state["result_history"],
+                st.session_state["last_calculated_result"],
+            )
+            if updated:
+                st.session_state["history_message"] = (
+                    "Existing result updated and previous result added to history."
+                )
+            else:
+                st.session_state["history_message"] = (
+                    "No matching saved student found for the current Roll Number, "
+                    "Semester, and Academic Year."
+                )
+else:
+    st.caption("No result history available.")
+
+if st.session_state["history_message"]:
+    if "updated" in st.session_state["history_message"]:
+        st.success(st.session_state["history_message"])
+    else:
+        st.warning(st.session_state["history_message"])
 
 st.subheader("Saved Student Results")
 

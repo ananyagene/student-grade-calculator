@@ -1,6 +1,7 @@
 import math
 import re
 import copy
+from datetime import datetime
 
 
 def get_total_marks(subject_marks):
@@ -258,3 +259,77 @@ def search_saved_students(saved_students, query=""):
         if search_query in student_name or search_query in roll_number:
             matches.append(copy.deepcopy(student))
     return matches
+
+
+def find_saved_student(saved_students, roll_number, semester, academic_year):
+    roll_number = str(roll_number).strip().upper()
+    for index, student in enumerate(saved_students):
+        if (
+            str(student["roll_number"]).strip().upper() == roll_number
+            and str(student["semester"]).strip() == str(semester).strip()
+            and str(student["academic_year"]).strip() == str(academic_year).strip()
+        ):
+            return index
+    return None
+
+
+def get_student_history(result_history, roll_number, semester, academic_year):
+    identity = (
+        str(roll_number).strip().upper(),
+        str(semester).strip(),
+        str(academic_year).strip(),
+    )
+    entries = []
+    for entry in result_history:
+        entry_identity = (
+            str(entry["roll_number"]).strip().upper(),
+            str(entry["semester"]).strip(),
+            str(entry["academic_year"]).strip(),
+        )
+        if entry_identity == identity:
+            entries.append(copy.deepcopy(entry))
+    entries.sort(key=lambda entry: entry["version"])
+    return entries
+
+
+def update_saved_student(saved_students, result_history, new_result, timestamp=None):
+    index = find_saved_student(
+        saved_students,
+        new_result["roll_number"],
+        new_result["semester"],
+        new_result["academic_year"],
+    )
+    if index is None:
+        return False
+
+    active_result = copy.deepcopy(saved_students[index])
+    previous_history = get_student_history(
+        result_history,
+        active_result["roll_number"],
+        active_result["semester"],
+        active_result["academic_year"],
+    )
+
+    if timestamp is None:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    historical_entry = copy.deepcopy(active_result)
+    historical_entry["timestamp"] = timestamp
+    historical_entry["version"] = len(previous_history) + 1
+    result_history.append(historical_entry)
+
+    saved_students[index] = copy.deepcopy(new_result)
+    return True
+
+
+def reset_result_form_state(session_state):
+    session_state["name"] = ""
+    session_state["roll_number"] = ""
+    session_state["semester"] = "Semester 1"
+    session_state["academic_year"] = "2026-2027"
+    session_state["last_calculated_result"] = None
+    session_state["save_message"] = ""
+    session_state["subject_count"] = 5
+    for index in range(1, 11):
+        session_state[f"subject{index}_name"] = f"Subject {index}"
+        session_state[f"marks{index}"] = 0
