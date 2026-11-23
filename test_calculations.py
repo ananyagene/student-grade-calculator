@@ -23,6 +23,7 @@ from calculations import (
     is_duplicate_saved_result,
     save_student_result,
     get_saved_student_table,
+    search_saved_students,
     get_class_leaderboard,
     get_class_analytics,
 )
@@ -437,6 +438,58 @@ class CalculationTests(unittest.TestCase):
         ]
         original = [dict(student) for student in students]
         get_class_analytics(students)
+        self.assertEqual(students, original)
+
+    def test_search_empty_student_list(self):
+        self.assertEqual(search_saved_students([]), [])
+
+    def test_search_empty_query_returns_all_students(self):
+        students = [
+            {"student_name": "Ananya", "roll_number": "001"},
+            {"student_name": "Rohan", "roll_number": "002"},
+        ]
+        results = search_saved_students(students, "   ")
+        self.assertEqual(len(results), 2)
+
+    def test_search_exact_and_partial_name(self):
+        students = [
+            {"student_name": "Ananya Singh", "roll_number": "001"},
+            {"student_name": "Rohan Kumar", "roll_number": "002"},
+        ]
+        self.assertEqual(
+            [student["student_name"] for student in search_saved_students(students, "Ananya Singh")],
+            ["Ananya Singh"],
+        )
+        self.assertEqual(
+            [student["student_name"] for student in search_saved_students(students, "Rohan")],
+            ["Rohan Kumar"],
+        )
+
+    def test_search_exact_and_partial_roll_number(self):
+        students = [
+            {"student_name": "Ananya", "roll_number": "ROLL001"},
+            {"student_name": "Rohan", "roll_number": "ROLL002"},
+        ]
+        self.assertEqual(len(search_saved_students(students, "ROLL001")), 1)
+        self.assertEqual(len(search_saved_students(students, "L00")), 2)
+
+    def test_search_is_case_insensitive(self):
+        students = [{"student_name": "Ananya Singh", "roll_number": "ROLL001"}]
+        self.assertEqual(len(search_saved_students(students, "ananya")), 1)
+        self.assertEqual(len(search_saved_students(students, "roll001")), 1)
+
+    def test_search_trims_query_spaces(self):
+        students = [{"student_name": "Ananya Singh", "roll_number": "ROLL001"}]
+        self.assertEqual(len(search_saved_students(students, "  Ananya  ")), 1)
+
+    def test_search_no_matches(self):
+        students = [{"student_name": "Ananya", "roll_number": "ROLL001"}]
+        self.assertEqual(search_saved_students(students, "Meera"), [])
+
+    def test_search_does_not_mutate_saved_records(self):
+        students = [{"student_name": "Ananya", "roll_number": "ROLL001"}]
+        original = [dict(student) for student in students]
+        search_saved_students(students, "Ananya")
         self.assertEqual(students, original)
 
     def test_report_card_generation_for_subject_counts(self):

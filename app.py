@@ -21,6 +21,7 @@ from calculations import (
     get_semester_options,
     is_valid_academic_year,
     get_saved_student_table,
+    search_saved_students,
     get_class_leaderboard,
     get_class_analytics,
     save_student_result,
@@ -389,6 +390,21 @@ if saved_table:
     st.table(saved_table)
 else:
     st.caption("No student results saved yet.")
+
+st.subheader("Search Student")
+search_query = st.text_input("Search by Name or Roll Number")
+
+if not st.session_state["saved_students"]:
+    st.info("No student results saved yet.")
+else:
+    search_results = search_saved_students(
+        st.session_state["saved_students"],
+        search_query,
+    )
+    if search_results:
+        st.table(get_saved_student_table(search_results))
+    else:
+        st.warning("No matching students found.")
 
 st.subheader("Class Leaderboard")
 leaderboard = get_class_leaderboard(st.session_state["saved_students"])

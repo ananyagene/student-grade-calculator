@@ -241,3 +241,20 @@ def get_class_analytics(saved_students):
         "failed_students": failed_students,
         "pass_rate": round((passed_students / total_students) * 100, 2),
     }
+
+
+def search_saved_students(saved_students, query=""):
+    if not saved_students:
+        return []
+
+    search_query = str(query).strip().lower()
+    if search_query == "":
+        return [copy.deepcopy(student) for student in saved_students]
+
+    matches = []
+    for student in saved_students:
+        student_name = str(student["student_name"]).strip().lower()
+        roll_number = str(student["roll_number"]).strip().lower()
+        if search_query in student_name or search_query in roll_number:
+            matches.append(copy.deepcopy(student))
+    return matches
