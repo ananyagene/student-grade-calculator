@@ -29,6 +29,21 @@ marks3 = st.number_input("Subject 3 Marks", min_value=0, max_value=100, key="mar
 marks4 = st.number_input("Subject 4 Marks", min_value=0, max_value=100, key="marks4")
 marks5 = st.number_input("Subject 5 Marks", min_value=0, max_value=100, key="marks5")
 
+# Determine grade for one subject
+def get_grade(marks):
+    if marks >= 90:
+        return "A"
+    elif marks >= 80:
+        return "B"
+    elif marks >= 70:
+        return "C"
+    elif marks >= 60:
+        return "D"
+    elif marks >= 40:
+        return "E"
+    else:
+        return "F"
+
 # Calculate result when button is clicked
 if st.button("Calculate Result"):
 
@@ -85,3 +100,11 @@ if st.button("Calculate Result"):
         st.write("**Grade:**", grade)
         st.write("**Result:**", result)
         st.write("**Remarks:**", remarks)
+
+        # Display marks and grade for each subject
+        st.subheader("Subject-Wise Grades")
+        st.write("**Subject 1:**", marks1, "/ 100 - Grade:", get_grade(marks1))
+        st.write("**Subject 2:**", marks2, "/ 100 - Grade:", get_grade(marks2))
+        st.write("**Subject 3:**", marks3, "/ 100 - Grade:", get_grade(marks3))
+        st.write("**Subject 4:**", marks4, "/ 100 - Grade:", get_grade(marks4))
+        st.write("**Subject 5:**", marks5, "/ 100 - Grade:", get_grade(marks5))
