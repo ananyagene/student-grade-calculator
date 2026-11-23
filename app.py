@@ -144,3 +144,19 @@ if st.button("Calculate Result"):
         st.write("**Subject 3:**", marks3, "/ 100 - Grade:", get_grade(marks3))
         st.write("**Subject 4:**", marks4, "/ 100 - Grade:", get_grade(marks4))
         st.write("**Subject 5:**", marks5, "/ 100 - Grade:", get_grade(marks5))
+
+        # Display marks for all five subjects in a bar chart
+        st.subheader("Subject Performance Chart")
+        subject_chart_data = {
+            "Subject 1": marks1,
+            "Subject 2": marks2,
+            "Subject 3": marks3,
+            "Subject 4": marks4,
+            "Subject 5": marks5,
+        }
+        st.bar_chart(
+            subject_chart_data,
+            x_label="Subject",
+            y_label="Marks",
+            alt="Bar chart showing marks out of 100 for five subjects",
+        )
