@@ -22,6 +22,10 @@ This project is developed as an academic project to practice **Git and GitHub** 
 - Subject Performance bar chart for all five subjects
 - Strongest and weakest subject insights, including tied subjects
 - Subject-wise Pass/Fail status for each subject
+- Subject improvement suggestions for each subject
+- Overall result feedback based on passed and failed subjects
+- Downloadable CSV result
+- Improved result presentation using Streamlit metrics and tables
 
 ## Grading System
 
