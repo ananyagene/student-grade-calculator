@@ -26,6 +26,10 @@ This project is developed as an academic project to practice **Git and GitHub** 
 - Overall result feedback based on passed and failed subjects
 - Downloadable CSV result
 - Improved result presentation using Streamlit metrics and tables
+- Improved input validation for names and subject marks
+- Clear application error handling for invalid input
+- Final application polish and edge-case testing
+- Automated calculation tests using Python's built-in unittest module
 
 ## Grading System
 
@@ -50,6 +54,8 @@ This project is developed as an academic project to practice **Git and GitHub** 
 ```
 student-grade-calculator/
 ├── app.py               # Main application file
+├── calculations.py      # Calculation and validation helpers
+├── test_calculations.py # Automated unittest cases
 ├── requirements.txt     # Python dependencies
 ├── README.md            # Project documentation
 └── .gitignore           # Files ignored by Git
@@ -75,6 +81,18 @@ pip install -r requirements.txt
 ```bash
 streamlit run app.py
 ```
+
+## Run Automated Tests
+
+Run the calculation tests from the project directory:
+
+```bash
+python -m unittest -v
+```
+
+The tests cover grade boundaries, total and average marks, percentage,
+Pass/Fail status, highest and lowest marks, tied subjects, and important
+edge cases such as all-zero and all-100 marks.
 
 ## Git Concepts Practiced
 
