@@ -134,15 +134,18 @@ if st.button("Calculate Result"):
         st.success("Result Calculated Successfully!")
         st.subheader("Student Result")
         st.write("**Student Name:**", name)
-        st.write("**Total Marks:**", total, "/ 500")
-        st.write("**Percentage:**", round(percentage, 2), "%")
-        st.write("**Grade:**", grade)
+
+        metric1, metric2, metric3, metric4 = st.columns(4)
+        metric1.metric("Total Marks", f"{total} / 500")
+        metric2.metric("Percentage", f"{round(percentage, 2)}%")
+        metric3.metric("Average Marks", f"{average_marks} / 100")
+        metric4.metric("Overall Grade", grade)
+
         st.write("**Result:**", result)
         st.write("**Remarks:**", remarks)
         st.write("**Performance Category:**", performance_category)
         st.write("**Highest Subject Marks:**", highest_marks, "/ 100")
         st.write("**Lowest Subject Marks:**", lowest_marks, "/ 100")
-        st.write("**Average Marks:**", average_marks, "/ 100")
 
         # Display a simple subject result summary
         st.subheader("Result Summary")
@@ -152,20 +155,21 @@ if st.button("Calculate Result"):
 
         # Display marks and grade for each subject
         st.subheader("Subject-Wise Grades")
+        subject_table = []
         for index in range(len(subject_names)):
             if subject_marks[index] >= 40:
                 subject_status = "Pass"
             else:
                 subject_status = "Fail"
 
-            st.write(
-                "**" + subject_names[index] + ":**",
-                subject_marks[index],
-                "/ 100 - Grade:",
-                get_grade(subject_marks[index]),
-                "- Status:",
-                subject_status,
-            )
+            subject_table.append({
+                "Subject": subject_names[index],
+                "Marks": subject_marks[index],
+                "Grade": get_grade(subject_marks[index]),
+                "Pass/Fail Status": subject_status,
+            })
+
+        st.table(subject_table)
 
         # Display marks for all five subjects in a bar chart
         st.subheader("Subject Performance Chart")
