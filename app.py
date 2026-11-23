@@ -2,6 +2,7 @@ import csv
 import io
 
 import streamlit as st
+from report_card import generate_report_card_pdf
 
 from calculations import (
     are_subject_marks_valid,
@@ -303,4 +304,36 @@ if st.button("Calculate Result"):
         data=csv_data,
         file_name="student_result.csv",
         mime="text/csv",
+    )
+
+    subject_pdf_rows = []
+    for index in range(subject_count):
+        subject_pdf_rows.append({
+            "name": subject_names[index],
+            "marks": subject_marks[index],
+            "grade": get_grade(subject_marks[index]),
+            "status": get_subject_status(subject_marks[index]),
+        })
+
+    report_data = {
+        "student_name": name,
+        "roll_number": roll_number,
+        "semester": semester,
+        "academic_year": academic_year,
+        "subjects": subject_pdf_rows,
+        "total_marks": total,
+        "maximum_marks": subject_count * 100,
+        "percentage": round(percentage, 2),
+        "average_marks": average_marks,
+        "overall_grade": grade,
+        "overall_result": result,
+        "performance_category": performance_category,
+        "remarks": remarks,
+    }
+    pdf_data = generate_report_card_pdf(report_data)
+    st.download_button(
+        "Download Report Card as PDF",
+        data=pdf_data,
+        file_name="student_report_card.pdf",
+        mime="application/pdf",
     )

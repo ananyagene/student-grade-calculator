@@ -1,6 +1,8 @@
 import unittest
 import math
 
+from report_card import build_report_card_text, generate_report_card_pdf
+
 from calculations import (
     are_subject_count_valid,
     are_subject_marks_valid,
@@ -164,6 +166,51 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(len(semesters), 8)
         self.assertEqual(semesters[0], "Semester 1")
         self.assertEqual(semesters[-1], "Semester 8")
+
+    def test_report_card_generation_for_subject_counts(self):
+        for subject_count in (3, 5, 10):
+            subjects = []
+            marks = []
+            for index in range(subject_count):
+                subject_name = f"Subject {index + 1}"
+                mark = 40 + index
+                marks.append(mark)
+                subjects.append({
+                    "name": subject_name,
+                    "marks": mark,
+                    "grade": get_grade(mark),
+                    "status": get_subject_status(mark),
+                })
+
+            total = get_total_marks(marks)
+            report_data = {
+                "student_name": "Ananya Singh",
+                "roll_number": "ROLL001",
+                "semester": "Semester 3",
+                "academic_year": "2026-2027",
+                "subjects": subjects,
+                "total_marks": total,
+                "maximum_marks": subject_count * 100,
+                "percentage": get_percentage(total, subject_count),
+                "average_marks": get_average_marks(total, subject_count),
+                "overall_grade": get_grade(get_percentage(total, subject_count)),
+                "overall_result": "Pass",
+                "performance_category": "Good",
+                "remarks": "Good",
+            }
+
+            pdf_bytes = generate_report_card_pdf(report_data)
+            self.assertTrue(len(pdf_bytes) > 100)
+            self.assertTrue(pdf_bytes.startswith(b"%PDF-"))
+
+            report_text = build_report_card_text(report_data)
+            self.assertIn("Ananya Singh", report_text)
+            self.assertIn("ROLL001", report_text)
+            self.assertIn("Semester 3", report_text)
+            self.assertIn("2026-2027", report_text)
+            self.assertIn("Generated Student Report Card", report_text)
+            self.assertIn("Subject 1", report_text)
+            self.assertIn(f"Subject {subject_count}", report_text)
 
 
 if __name__ == "__main__":
