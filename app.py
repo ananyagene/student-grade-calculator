@@ -55,10 +55,21 @@ if st.button("Calculate Result"):
         total = marks1 + marks2 + marks3 + marks4 + marks5
 
         # Calculate highest and lowest subject marks
+        subject_names = ["Subject 1", "Subject 2", "Subject 3", "Subject 4", "Subject 5"]
         subject_marks = [marks1, marks2, marks3, marks4, marks5]
         highest_marks = max(subject_marks)
         lowest_marks = min(subject_marks)
         average_marks = round(total / 5, 2)
+        strongest_subjects = [
+            subject_names[index]
+            for index in range(len(subject_marks))
+            if subject_marks[index] == highest_marks
+        ]
+        weakest_subjects = [
+            subject_names[index]
+            for index in range(len(subject_marks))
+            if subject_marks[index] == lowest_marks
+        ]
 
         passed_subjects = 0
         failed_subjects = 0
@@ -147,16 +158,23 @@ if st.button("Calculate Result"):
 
         # Display marks for all five subjects in a bar chart
         st.subheader("Subject Performance Chart")
-        subject_chart_data = {
-            "Subject 1": marks1,
-            "Subject 2": marks2,
-            "Subject 3": marks3,
-            "Subject 4": marks4,
-            "Subject 5": marks5,
-        }
+        subject_chart_data = dict(zip(subject_names, subject_marks))
         st.bar_chart(
             subject_chart_data,
             x_label="Subject",
             y_label="Marks",
             alt="Bar chart showing marks out of 100 for five subjects",
+        )
+
+        # Display strongest and weakest subjects
+        st.subheader("Subject Performance Insights")
+        st.write(
+            "**Strongest Subject(s):**",
+            ", ".join(strongest_subjects),
+            "-", highest_marks, "/ 100",
+        )
+        st.write(
+            "**Weakest Subject(s):**",
+            ", ".join(weakest_subjects),
+            "-", lowest_marks, "/ 100",
         )
