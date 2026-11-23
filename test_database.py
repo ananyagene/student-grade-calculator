@@ -127,6 +127,22 @@ class StudentDatabaseTests(unittest.TestCase):
             self.database.save_active_result(invalid)
         self.assertEqual(self.database.get_active_results(), [])
 
+    def test_database_mutations_reject_student_account(self):
+        student_account = {
+            "account_id": 2,
+            "username": "001",
+            "role": "STUDENT",
+            "student_id": 1,
+        }
+        result = self.make_result()
+        self.assertFalse(
+            self.database.save_active_result_for_account(student_account, result)
+        )
+        self.assertFalse(
+            self.database.update_active_result_for_account(student_account, result)
+        )
+        self.assertEqual(self.database.get_active_results(), [])
+
 
 if __name__ == "__main__":
     unittest.main()

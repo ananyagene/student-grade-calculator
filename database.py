@@ -60,6 +60,21 @@ class StudentDatabase:
                     UNIQUE (result_id, position)
                 );
 
+                CREATE TABLE IF NOT EXISTS accounts (
+                    account_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT NOT NULL UNIQUE,
+                    password_salt BLOB NOT NULL,
+                    password_hash BLOB NOT NULL,
+                    iterations INTEGER NOT NULL,
+                    role TEXT NOT NULL CHECK (role IN ('ADMIN', 'STUDENT')),
+                    student_id INTEGER UNIQUE,
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY (student_id) REFERENCES students(student_id)
+                        ON DELETE SET NULL
+                );
+
                 CREATE TABLE IF NOT EXISTS result_history (
                     history_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     student_id INTEGER NOT NULL,
@@ -109,6 +124,197 @@ class StudentDatabase:
 
     def _now(self):
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    def account_count(self):
+        connection = self.connect()
+        try:
+            row = connection.execute(
+                "SELECT COUNT(*) AS account_count FROM accounts"
+            ).fetchone()
+            return int(row["account_count"])
+        finally:
+            connection.close()
+
+    def create_account(
+        self,
+        username,
+        password_salt,
+        password_hash,
+        iterations,
+        role,
+        student_id=None,
+    ):
+        connection = self.connect()
+        timestamp = self._now()
+        try:
+            connection.execute("BEGIN")
+            connection.execute(
+                """
+                INSERT INTO accounts (
+                    username, password_salt, password_hash, iterations,
+                    role, student_id, is_active, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+                """,
+                (
+                    username.strip().lower(),
+                    password_salt,
+                    password_hash,
+                    iterations,
+                    role,
+                    student_id,
+                    timestamp,
+                    timestamp,
+                ),
+            )
+            connection.commit()
+            return True
+        except sqlite3.IntegrityError:
+            connection.rollback()
+            return False
+        finally:
+            connection.close()
+
+    def get_account_by_username(self, username):
+        connection = self.connect()
+        try:
+            row = connection.execute(
+                """
+                SELECT account_id, username, password_salt, password_hash,
+                       iterations, role, student_id, is_active
+                FROM accounts
+                WHERE username = ? AND is_active = 1
+                """,
+                (username.strip().lower(),),
+            ).fetchone()
+            if not row:
+                return None
+            return dict(row)
+        finally:
+            connection.close()
+
+    def get_account_by_id(self, account_id):
+        connection = self.connect()
+        try:
+            row = connection.execute(
+                """
+                SELECT account_id, username, role, student_id, is_active
+                FROM accounts
+                WHERE account_id = ? AND is_active = 1
+                """,
+                (account_id,),
+            ).fetchone()
+            return dict(row) if row else None
+        finally:
+            connection.close()
+
+    def save_active_result_for_account(self, account, result):
+        if not account or account["role"] != "ADMIN":
+            return False
+        return self.save_active_result(result)
+
+    def update_active_result_for_account(self, account, result):
+        if not account or account["role"] != "ADMIN":
+            return False
+        return self.update_active_result(result)
+
+    def get_student_result_for_account(self, account):
+        if not account or account["role"] != "STUDENT":
+            return None
+        if not account["student_id"]:
+            return None
+        connection = self.connect()
+        try:
+            row = connection.execute(
+                """
+                SELECT
+                    s.student_id, s.student_name, s.roll_number,
+                    s.semester, s.academic_year,
+                    ar.result_id, ar.subject_count, ar.total_marks,
+                    ar.percentage, ar.average_marks, ar.overall_grade,
+                    ar.overall_result, ar.performance_category, ar.remarks,
+                    ar.version, ar.created_at, ar.updated_at
+                FROM students s
+                JOIN active_results ar ON ar.student_id = s.student_id
+                WHERE s.student_id = ?
+                """,
+                (account["student_id"],),
+            ).fetchone()
+            if not row:
+                return None
+            subjects = connection.execute(
+                """
+                SELECT position, subject_name, marks, grade, status
+                FROM active_subjects
+                WHERE result_id = ?
+                ORDER BY position
+                """,
+                (row["result_id"],),
+            ).fetchall()
+            return {
+                "student_name": row["student_name"],
+                "roll_number": row["roll_number"],
+                "semester": row["semester"],
+                "academic_year": row["academic_year"],
+                "subject_count": row["subject_count"],
+                "subject_names": [subject["subject_name"] for subject in subjects],
+                "subject_marks": [subject["marks"] for subject in subjects],
+                "total_marks": row["total_marks"],
+                "percentage": row["percentage"],
+                "average_marks": row["average_marks"],
+                "overall_grade": row["overall_grade"],
+                "overall_result": row["overall_result"],
+                "performance_category": row["performance_category"],
+                "remarks": row["remarks"],
+                "version": row["version"],
+            }
+        finally:
+            connection.close()
+
+    def provision_student_account(self, username, password_salt, password_hash,
+                                  iterations, roll_number, semester, academic_year):
+        connection = self.connect()
+        timestamp = self._now()
+        try:
+            connection.execute("BEGIN")
+            student = connection.execute(
+                """
+                SELECT student_id
+                FROM students
+                WHERE roll_number = ? AND semester = ? AND academic_year = ?
+                """,
+                (
+                    roll_number.strip().upper(),
+                    semester.strip(),
+                    academic_year.strip(),
+                ),
+            ).fetchone()
+            if not student:
+                connection.rollback()
+                return False
+            connection.execute(
+                """
+                INSERT INTO accounts (
+                    username, password_salt, password_hash, iterations,
+                    role, student_id, is_active, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, 'STUDENT', ?, 1, ?, ?)
+                """,
+                (
+                    username.strip().lower(),
+                    password_salt,
+                    password_hash,
+                    iterations,
+                    student["student_id"],
+                    timestamp,
+                    timestamp,
+                ),
+            )
+            connection.commit()
+            return True
+        except sqlite3.IntegrityError:
+            connection.rollback()
+            return False
+        finally:
+            connection.close()
 
     def save_active_result(self, result):
         if not self._validate_result(result):

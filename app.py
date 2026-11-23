@@ -1,10 +1,12 @@
 import csv
 import io
+import os
 from pathlib import Path
 
 import streamlit as st
 from report_card import generate_report_card_pdf
 from database import StudentDatabase
+from auth import AuthenticationManager, PBKDF2_ITERATIONS
 
 from calculations import (
     are_subject_marks_valid,
@@ -38,12 +40,78 @@ from calculations import (
 DATABASE_PATH = Path(__file__).resolve().with_name("student_results.sqlite3")
 student_database = StudentDatabase(DATABASE_PATH)
 student_database.initialize()
+authentication_manager = AuthenticationManager(student_database)
+
+st.session_state.setdefault("authenticated_account", None)
 
 st.set_page_config(
     page_title="Student Grade Calculator",
     page_icon=":material/school:",
     layout="wide",
 )
+
+if st.session_state["authenticated_account"] is None:
+    st.title("Student Grade Calculator", icon=":material/school:")
+    st.caption("Secure account access")
+
+    if authentication_manager.account_count() == 0:
+        env_username = os.getenv("ADMIN_USERNAME", "").strip()
+        env_password = os.getenv("ADMIN_PASSWORD", "")
+
+        if env_username and env_password:
+            try:
+                created = authentication_manager.create_admin(env_username, env_password)
+                if created:
+                    st.success("First-run administrator account created from environment setup.")
+                    st.rerun()
+            except ValueError as error:
+                st.error(str(error))
+
+        st.subheader("First-run administrator setup")
+        st.caption("This setup appears only until the first administrator account exists.")
+        with st.form("first_admin_setup"):
+            setup_username = st.text_input("Administrator username")
+            setup_password = st.text_input("Administrator password", type="password")
+            confirm_password = st.text_input("Confirm password", type="password")
+            submitted = st.form_submit_button("Create administrator")
+
+        if submitted:
+            if setup_password != confirm_password:
+                st.error("Passwords do not match.")
+            elif len(setup_password) < 8:
+                st.error("Password must contain at least 8 characters.")
+            else:
+                try:
+                    created = authentication_manager.create_admin(
+                        setup_username,
+                        setup_password,
+                    )
+                    if created:
+                        st.success("Administrator account created. Please sign in.")
+                        st.rerun()
+                    else:
+                        st.error("Could not create the administrator account.")
+                except ValueError as error:
+                    st.error(str(error))
+        st.stop()
+
+    st.subheader("Sign in")
+    login_role = st.selectbox("Account type", ["ADMIN", "STUDENT"])
+    login_username = st.text_input("Username or Student ID")
+    login_password = st.text_input("Password", type="password")
+
+    if st.button("Login", type="primary", icon=":material/login:", width="stretch"):
+        account = authentication_manager.authenticate(
+            login_username,
+            login_password,
+            login_role,
+        )
+        if account:
+            st.session_state["authenticated_account"] = account
+            st.rerun()
+        else:
+            st.error("Sign-in failed. Check your account type, username, and password.")
+    st.stop()
 
 st.markdown(
     """
@@ -58,6 +126,113 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+authenticated_account = st.session_state["authenticated_account"]
+
+if authentication_manager.is_student(authenticated_account):
+    st.title("Student Dashboard", icon=":material/person:")
+
+    student_result = student_database.get_student_result_for_account(
+        authenticated_account
+    )
+    if not student_result:
+        st.info("No academic result is currently linked to this account.")
+    else:
+        st.subheader("My Academic Result")
+        st.write("**Student Name:**", student_result["student_name"])
+        st.write("**Roll Number:**", student_result["roll_number"])
+        st.write("**Semester:**", student_result["semester"])
+        st.write("**Academic Year:**", student_result["academic_year"])
+
+        metric1, metric2, metric3, metric4 = st.columns(4)
+        metric1.metric(
+            "Percentage",
+            f"{round(student_result['percentage'], 2)}%",
+            border=True,
+        )
+        metric2.metric(
+            "Average Marks",
+            f"{student_result['average_marks']} / 100",
+            border=True,
+        )
+        metric3.metric(
+            "Overall Grade",
+            student_result["overall_grade"],
+            border=True,
+        )
+        metric4.metric(
+            "Result",
+            student_result["overall_result"],
+            border=True,
+        )
+
+        subject_table = []
+        for index, subject_name in enumerate(student_result["subject_names"]):
+            marks = student_result["subject_marks"][index]
+            subject_table.append({
+                "Subject": subject_name,
+                "Marks": marks,
+                "Grade": get_grade(marks),
+                "Pass/Fail Status": "Pass" if marks >= 40 else "Fail",
+            })
+        st.table(subject_table)
+
+        history = student_database.get_result_history(
+            student_result["roll_number"],
+            student_result["semester"],
+            student_result["academic_year"],
+        )
+        st.subheader("My Result History")
+        if history:
+            st.table([
+                {
+                    "Version": entry["version"],
+                    "Timestamp": entry["timestamp"],
+                    "Percentage": entry["percentage"],
+                    "Overall Grade": entry["overall_grade"],
+                    "Pass/Fail": entry["overall_result"],
+                }
+                for entry in history
+            ])
+        else:
+            st.caption("No previous result versions are available.")
+
+        subject_pdf_rows = [
+            {
+                "name": student_result["subject_names"][index],
+                "marks": student_result["subject_marks"][index],
+                "grade": get_grade(student_result["subject_marks"][index]),
+                "status": "Pass" if student_result["subject_marks"][index] >= 40 else "Fail",
+            }
+            for index in range(student_result["subject_count"])
+        ]
+        report_data = {
+            "student_name": student_result["student_name"],
+            "roll_number": student_result["roll_number"],
+            "semester": student_result["semester"],
+            "academic_year": student_result["academic_year"],
+            "subjects": subject_pdf_rows,
+            "total_marks": student_result["total_marks"],
+            "maximum_marks": student_result["subject_count"] * 100,
+            "percentage": student_result["percentage"],
+            "average_marks": student_result["average_marks"],
+            "overall_grade": student_result["overall_grade"],
+            "overall_result": student_result["overall_result"],
+            "performance_category": student_result["performance_category"],
+            "remarks": student_result["remarks"],
+        }
+        st.download_button(
+            "Download My Report Card",
+            data=generate_report_card_pdf(report_data),
+            file_name="my_student_report_card.pdf",
+            mime="application/pdf",
+            icon=":material/picture_as_pdf:",
+        )
+
+    if st.button("Logout", type="secondary", icon=":material/logout:"):
+        authentication_manager.clear_authenticated_session(st.session_state)
+        st.rerun()
+    st.stop()
 
 header_left, header_right = st.columns([5, 1], vertical_alignment="bottom")
 with header_left:
@@ -123,6 +298,14 @@ if (
         )
 
 with header_right:
+    if st.button(
+        "Logout",
+        type="secondary",
+        icon=":material/logout:",
+        width="stretch",
+    ):
+        authentication_manager.clear_authenticated_session(st.session_state)
+        st.rerun()
     st.button(
         "Reset",
         on_click=reset_fields,
@@ -568,13 +751,15 @@ if active_students:
             icon=":material/update:",
             width="stretch",
         ):
-            updated = student_database.update_active_result(
+            updated = student_database.update_active_result_for_account(
+                authenticated_account,
                 st.session_state["last_calculated_result"],
             )
             if updated:
                 st.session_state["history_message"] = (
                     "Existing result updated and previous result added to history."
                 )
+                active_students = student_database.get_active_results()
             else:
                 st.session_state["history_message"] = (
                     "No matching saved student found for the current Roll Number, "
@@ -591,6 +776,60 @@ if st.session_state["history_message"]:
 
 st.subheader("Saved Student Results", icon=":material/groups:")
 
+if authentication_manager.is_admin(authenticated_account):
+    st.subheader("Student Account Provisioning", icon=":material/person_add:")
+    if active_students:
+        provisioning_options = [
+            f"{student['student_name']} | {student['roll_number']} | "
+            f"{student['semester']} | {student['academic_year']}"
+            for student in active_students
+        ]
+        selected_provisioning = st.selectbox(
+            "Select student account",
+            provisioning_options,
+            key="provision_student",
+        )
+        provision_index = provisioning_options.index(selected_provisioning)
+        provision_student = active_students[provision_index]
+
+        with st.form("student_account_form"):
+            provision_username = st.text_input("Student username")
+            provision_password = st.text_input(
+                "Initial password",
+                type="password",
+            )
+            provision_confirm = st.text_input(
+                "Confirm initial password",
+                type="password",
+            )
+            provision_submitted = st.form_submit_button(
+                "Create Student Account",
+                icon=":material/person_add:",
+            )
+
+        if provision_submitted:
+            if provision_password != provision_confirm:
+                st.error("Passwords do not match.")
+            elif len(provision_password) < 8:
+                st.error("Password must contain at least 8 characters.")
+            else:
+                created = authentication_manager.provision_student(
+                    provision_username,
+                    provision_password,
+                    provision_student["roll_number"],
+                    provision_student["semester"],
+                    provision_student["academic_year"],
+                )
+                if created:
+                    st.success("Student account created successfully.")
+                else:
+                    st.error(
+                        "Student account could not be created. "
+                        "Check the username and student identity."
+                    )
+    else:
+        st.caption("Save a student result before provisioning an account.")
+
 if st.session_state["last_calculated_result"] is not None:
     if st.button(
         "Save Student Result",
@@ -598,11 +837,13 @@ if st.session_state["last_calculated_result"] is not None:
         icon=":material/save:",
         width="stretch",
     ):
-        saved = student_database.save_active_result(
+        saved = student_database.save_active_result_for_account(
+            authenticated_account,
             st.session_state["last_calculated_result"]
         )
         if saved:
             st.session_state["save_message"] = "Student result saved successfully."
+            active_students = student_database.get_active_results()
         else:
             st.session_state["save_message"] = (
                 "A result with this roll number already exists for "
