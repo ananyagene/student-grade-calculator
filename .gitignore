@@ -12,3 +12,8 @@ env/
 # IDE
 .vscode/
 .idea/
+
+# Local SQLite database
+*.db
+*.sqlite
+*.sqlite3

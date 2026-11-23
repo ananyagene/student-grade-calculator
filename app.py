@@ -1,8 +1,10 @@
 import csv
 import io
+from pathlib import Path
 
 import streamlit as st
 from report_card import generate_report_card_pdf
+from database import StudentDatabase
 
 from calculations import (
     are_subject_marks_valid,
@@ -32,6 +34,10 @@ from calculations import (
     reset_result_form_state,
     get_sample_student_data,
 )
+
+DATABASE_PATH = Path(__file__).resolve().with_name("student_results.sqlite3")
+student_database = StudentDatabase(DATABASE_PATH)
+student_database.initialize()
 
 st.set_page_config(
     page_title="Student Grade Calculator",
@@ -83,11 +89,38 @@ def load_demo_student():
     st.session_state["save_message"] = ""
 
 
-st.session_state.setdefault("saved_students", [])
 st.session_state.setdefault("last_calculated_result", None)
 st.session_state.setdefault("save_message", "")
 st.session_state.setdefault("result_history", [])
 st.session_state.setdefault("history_message", "")
+st.session_state.setdefault("_database_migration_done", False)
+
+legacy_saved_students = st.session_state.get("saved_students", [])
+legacy_result_history = st.session_state.get("result_history", [])
+if (
+    legacy_saved_students
+    and not st.session_state["_database_migration_done"]
+    and not student_database.get_active_results()
+):
+    st.warning(
+        "Existing session-only student results were found. "
+        "Import them into the local SQLite database explicitly."
+    )
+    if st.button(
+        "Import Session Results",
+        type="secondary",
+        icon=":material/database:",
+    ):
+        imported = student_database.import_session_snapshot(
+            legacy_saved_students,
+            legacy_result_history,
+        )
+        st.session_state["_database_migration_done"] = True
+        st.session_state.pop("saved_students", None)
+        st.session_state.pop("result_history", None)
+        st.success(
+            f"Imported {imported} active student result(s) into SQLite."
+        )
 
 with header_right:
     st.button(
@@ -452,19 +485,24 @@ if calculate_result:
         "academic_year": academic_year,
         "total_marks": total,
         "percentage": round(percentage, 2),
+        "average_marks": average_marks,
         "overall_grade": grade,
         "overall_result": result,
+        "performance_category": performance_category,
+        "remarks": remarks,
         "subject_count": subject_count,
         "subject_names": list(subject_names),
         "subject_marks": list(subject_marks),
     }
     st.session_state["save_message"] = ""
 
+active_students = student_database.get_active_results()
+
 st.subheader("Result History", icon=":material/history:")
 
-if st.session_state["saved_students"]:
+if active_students:
     history_options = []
-    for index, student in enumerate(st.session_state["saved_students"]):
+    for student in active_students:
         history_options.append(
             f"{student['student_name']} | {student['roll_number']} | "
             f"{student['semester']} | {student['academic_year']}"
@@ -476,7 +514,7 @@ if st.session_state["saved_students"]:
         key="history_student",
     )
     selected_index = history_options.index(selected_history)
-    selected_student = st.session_state["saved_students"][selected_index]
+    selected_student = active_students[selected_index]
 
     st.write("**Latest Active Result**")
     st.write(
@@ -499,8 +537,7 @@ if st.session_state["saved_students"]:
         selected_student["overall_result"],
     )
 
-    previous_history = get_student_history(
-        st.session_state["result_history"],
+    previous_history = student_database.get_result_history(
         selected_student["roll_number"],
         selected_student["semester"],
         selected_student["academic_year"],
@@ -531,9 +568,7 @@ if st.session_state["saved_students"]:
             icon=":material/update:",
             width="stretch",
         ):
-            updated = update_saved_student(
-                st.session_state["saved_students"],
-                st.session_state["result_history"],
+            updated = student_database.update_active_result(
                 st.session_state["last_calculated_result"],
             )
             if updated:
@@ -563,9 +598,8 @@ if st.session_state["last_calculated_result"] is not None:
         icon=":material/save:",
         width="stretch",
     ):
-        saved = save_student_result(
-            st.session_state["saved_students"],
-            st.session_state["last_calculated_result"],
+        saved = student_database.save_active_result(
+            st.session_state["last_calculated_result"]
         )
         if saved:
             st.session_state["save_message"] = "Student result saved successfully."
@@ -581,7 +615,7 @@ if st.session_state["last_calculated_result"] is not None:
         else:
             st.warning(st.session_state["save_message"])
 
-saved_table = get_saved_student_table(st.session_state["saved_students"])
+saved_table = get_saved_student_table(active_students)
 if saved_table:
     st.table(saved_table)
 else:
@@ -590,11 +624,11 @@ else:
 st.subheader("Search Student", icon=":material/search:")
 search_query = st.text_input("Search by Name or Roll Number")
 
-if not st.session_state["saved_students"]:
+if not active_students:
     st.info("No student results saved yet.")
 else:
     search_results = search_saved_students(
-        st.session_state["saved_students"],
+        active_students,
         search_query,
     )
     if search_results:
@@ -603,14 +637,14 @@ else:
         st.warning("No matching students found.")
 
 st.subheader("Class Leaderboard", icon=":material/emoji_events:")
-leaderboard = get_class_leaderboard(st.session_state["saved_students"])
+leaderboard = get_class_leaderboard(active_students)
 if leaderboard:
     st.table(leaderboard)
 else:
     st.info("Save at least one student result to create the class leaderboard.")
 
 st.subheader("Class Analytics", icon=":material/analytics:")
-class_analytics = get_class_analytics(st.session_state["saved_students"])
+class_analytics = get_class_analytics(active_students)
 
 metric_row_one = st.columns(4)
 metric_row_one[0].metric("Total Students", class_analytics["total_students"], border=True)
@@ -640,8 +674,8 @@ metric_row_two[2].metric(
 )
 
 st.subheader("Grade Distribution", icon=":material/bar_chart:")
-grade_distribution = get_grade_distribution(st.session_state["saved_students"])
-if st.session_state["saved_students"]:
+grade_distribution = get_grade_distribution(active_students)
+if active_students:
     chart_data = {
         row["Grade"]: row["Student Count"]
         for row in grade_distribution
