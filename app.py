@@ -58,6 +58,7 @@ if st.button("Calculate Result"):
         subject_marks = [marks1, marks2, marks3, marks4, marks5]
         highest_marks = max(subject_marks)
         lowest_marks = min(subject_marks)
+        average_marks = round(total / 5, 2)
 
         # Calculate percentage
         percentage = (total / 500) * 100
@@ -107,6 +108,7 @@ if st.button("Calculate Result"):
         st.write("**Remarks:**", remarks)
         st.write("**Highest Subject Marks:**", highest_marks, "/ 100")
         st.write("**Lowest Subject Marks:**", lowest_marks, "/ 100")
+        st.write("**Average Marks:**", average_marks, "/ 100")
 
         # Display marks and grade for each subject
         st.subheader("Subject-Wise Grades")
