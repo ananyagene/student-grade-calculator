@@ -49,6 +49,20 @@ if st.button("Calculate Result"):
         else:
             result = "Fail"
 
+        # Determine remarks based on percentage
+        if percentage >= 90:
+            remarks = "Excellent"
+        elif percentage >= 80:
+            remarks = "Very Good"
+        elif percentage >= 70:
+            remarks = "Good"
+        elif percentage >= 60:
+            remarks = "Satisfactory"
+        elif percentage >= 40:
+            remarks = "Needs Improvement"
+        else:
+            remarks = "Failed"
+
         # Display final result
         st.success("Result Calculated Successfully!")
         st.write("**Student Name:**", name)
@@ -56,3 +70,4 @@ if st.button("Calculate Result"):
         st.write("**Percentage:**", round(percentage, 2), "%")
         st.write("**Grade:**", grade)
         st.write("**Result:**", result)
+        st.write("**Remarks:**", remarks)
