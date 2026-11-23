@@ -21,6 +21,7 @@ from calculations import (
     get_semester_options,
     is_valid_academic_year,
     get_saved_student_table,
+    get_class_leaderboard,
     save_student_result,
 )
 
@@ -387,3 +388,10 @@ if saved_table:
     st.table(saved_table)
 else:
     st.caption("No student results saved yet.")
+
+st.subheader("Class Leaderboard")
+leaderboard = get_class_leaderboard(st.session_state["saved_students"])
+if leaderboard:
+    st.table(leaderboard)
+else:
+    st.info("Save at least one student result to create the class leaderboard.")

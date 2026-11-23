@@ -169,3 +169,40 @@ def get_saved_student_table(saved_students):
             "Pass/Fail": student["overall_result"],
         })
     return table_rows
+
+
+def get_class_leaderboard(saved_students):
+    if not saved_students:
+        return []
+
+    ordered_students = sorted(
+        (copy.deepcopy(student) for student in saved_students),
+        key=lambda student: (
+            -float(student["percentage"]),
+            str(student["student_name"]).strip().lower(),
+            str(student["roll_number"]).strip().lower(),
+        ),
+    )
+
+    leaderboard = []
+    previous_percentage = None
+    current_rank = 0
+
+    for position, student in enumerate(ordered_students, start=1):
+        percentage = float(student["percentage"])
+        if previous_percentage is None or percentage != previous_percentage:
+            current_rank = position
+
+        leaderboard.append({
+            "Rank": current_rank,
+            "Student Name": student["student_name"],
+            "Roll Number": student["roll_number"],
+            "Semester": student["semester"],
+            "Academic Year": student["academic_year"],
+            "Percentage": student["percentage"],
+            "Overall Grade": student["overall_grade"],
+            "Pass/Fail": student["overall_result"],
+        })
+        previous_percentage = percentage
+
+    return leaderboard

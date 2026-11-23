@@ -23,6 +23,7 @@ from calculations import (
     is_duplicate_saved_result,
     save_student_result,
     get_saved_student_table,
+    get_class_leaderboard,
 )
 
 
@@ -273,6 +274,111 @@ class CalculationTests(unittest.TestCase):
                 "Overall Grade",
                 "Pass/Fail",
             },
+        )
+
+    def test_empty_leaderboard(self):
+        self.assertEqual(get_class_leaderboard([]), [])
+
+    def test_one_student_leaderboard(self):
+        students = [{
+            "student_name": "Ananya",
+            "roll_number": "001",
+            "semester": "Semester 1",
+            "academic_year": "2026-2027",
+            "percentage": 80,
+            "overall_grade": "B",
+            "overall_result": "Pass",
+        }]
+        leaderboard = get_class_leaderboard(students)
+        self.assertEqual(len(leaderboard), 1)
+        self.assertEqual(leaderboard[0]["Rank"], 1)
+
+    def test_leaderboard_sorts_different_percentages(self):
+        students = [
+            {"student_name": "Rohan", "roll_number": "002", "semester": "Semester 1",
+             "academic_year": "2026-2027", "percentage": 70, "overall_grade": "C",
+             "overall_result": "Pass"},
+            {"student_name": "Ananya", "roll_number": "001", "semester": "Semester 1",
+             "academic_year": "2026-2027", "percentage": 90, "overall_grade": "A",
+             "overall_result": "Pass"},
+            {"student_name": "Meera", "roll_number": "003", "semester": "Semester 1",
+             "academic_year": "2026-2027", "percentage": 80, "overall_grade": "B",
+             "overall_result": "Pass"},
+        ]
+        leaderboard = get_class_leaderboard(students)
+        self.assertEqual(
+            [row["Student Name"] for row in leaderboard],
+            ["Ananya", "Meera", "Rohan"],
+        )
+        self.assertEqual([row["Rank"] for row in leaderboard], [1, 2, 3])
+
+    def test_leaderboard_competition_ranking_for_ties(self):
+        students = [
+            {"student_name": "Rohan", "roll_number": "003", "semester": "Semester 1",
+             "academic_year": "2026-2027", "percentage": 80, "overall_grade": "B",
+             "overall_result": "Pass"},
+            {"student_name": "Ananya", "roll_number": "001", "semester": "Semester 1",
+             "academic_year": "2026-2027", "percentage": 90, "overall_grade": "A",
+             "overall_result": "Pass"},
+            {"student_name": "Meera", "roll_number": "002", "semester": "Semester 1",
+             "academic_year": "2026-2027", "percentage": 80, "overall_grade": "B",
+             "overall_result": "Pass"},
+            {"student_name": "Kiran", "roll_number": "004", "semester": "Semester 1",
+             "academic_year": "2026-2027", "percentage": 70, "overall_grade": "C",
+             "overall_result": "Pass"},
+        ]
+        leaderboard = get_class_leaderboard(students)
+        self.assertEqual([row["Rank"] for row in leaderboard], [1, 2, 2, 4])
+
+    def test_leaderboard_ties_use_stable_secondary_order(self):
+        students = [
+            {"student_name": "Zoya", "roll_number": "002", "semester": "Semester 1",
+             "academic_year": "2026-2027", "percentage": 85, "overall_grade": "B",
+             "overall_result": "Pass"},
+            {"student_name": "Ananya", "roll_number": "003", "semester": "Semester 1",
+             "academic_year": "2026-2027", "percentage": 85, "overall_grade": "B",
+             "overall_result": "Pass"},
+            {"student_name": "Ananya", "roll_number": "001", "semester": "Semester 1",
+             "academic_year": "2026-2027", "percentage": 85, "overall_grade": "B",
+             "overall_result": "Pass"},
+        ]
+        leaderboard = get_class_leaderboard(students)
+        self.assertEqual(
+            [(row["Student Name"], row["Roll Number"]) for row in leaderboard],
+            [("Ananya", "001"), ("Ananya", "003"), ("Zoya", "002")],
+        )
+
+    def test_leaderboard_does_not_modify_saved_records(self):
+        students = [
+            {"student_name": "Rohan", "roll_number": "002", "semester": "Semester 1",
+             "academic_year": "2026-2027", "percentage": 70, "overall_grade": "C",
+             "overall_result": "Pass"},
+            {"student_name": "Ananya", "roll_number": "001", "semester": "Semester 1",
+             "academic_year": "2026-2027", "percentage": 90, "overall_grade": "A",
+             "overall_result": "Pass"},
+        ]
+        original_names = [student["student_name"] for student in students]
+        get_class_leaderboard(students)
+        self.assertEqual(
+            [student["student_name"] for student in students],
+            original_names,
+        )
+
+    def test_leaderboard_supports_different_subject_counts(self):
+        students = [
+            {"student_name": "Three Subjects", "roll_number": "003",
+             "semester": "Semester 1", "academic_year": "2026-2027",
+             "percentage": 63.33, "overall_grade": "C", "overall_result": "Pass",
+             "subject_count": 3},
+            {"student_name": "Ten Subjects", "roll_number": "010",
+             "semester": "Semester 1", "academic_year": "2026-2027",
+             "percentage": 55, "overall_grade": "E", "overall_result": "Pass",
+             "subject_count": 10},
+        ]
+        leaderboard = get_class_leaderboard(students)
+        self.assertEqual(
+            [row["Student Name"] for row in leaderboard],
+            ["Three Subjects", "Ten Subjects"],
         )
 
     def test_report_card_generation_for_subject_counts(self):
