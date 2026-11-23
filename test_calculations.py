@@ -1,4 +1,5 @@
 import unittest
+import math
 
 from calculations import (
     are_subject_marks_valid,
@@ -9,6 +10,7 @@ from calculations import (
     get_lowest_marks,
     get_percentage,
     get_subject_status,
+    get_tied_subject_names,
     get_total_marks,
 )
 
@@ -16,6 +18,23 @@ from calculations import (
 class CalculationTests(unittest.TestCase):
     def test_total_marks(self):
         self.assertEqual(get_total_marks([80, 70, 90, 60, 85]), 385)
+
+    def test_all_zero_marks(self):
+        marks = [0, 0, 0, 0, 0]
+        self.assertEqual(get_total_marks(marks), 0)
+        self.assertEqual(get_percentage(get_total_marks(marks)), 0)
+        self.assertEqual(get_subject_status(0), "Fail")
+
+    def test_all_hundred_marks(self):
+        marks = [100, 100, 100, 100, 100]
+        self.assertEqual(get_total_marks(marks), 500)
+        self.assertEqual(get_percentage(get_total_marks(marks)), 100)
+        self.assertEqual(get_grade(100), "A")
+
+    def test_mixed_passing_and_failing_subjects(self):
+        marks = [39, 40, 70, 100, 59]
+        statuses = [get_subject_status(mark) for mark in marks]
+        self.assertEqual(statuses, ["Fail", "Pass", "Pass", "Pass", "Pass"])
 
     def test_percentage(self):
         self.assertEqual(get_percentage(385), 77.0)
@@ -61,6 +80,21 @@ class CalculationTests(unittest.TestCase):
         self.assertFalse(are_subject_marks_valid([0, 40, 59, 101, 75]))
         self.assertFalse(are_subject_marks_valid([0, 40, "59", 100, 75]))
         self.assertFalse(are_subject_marks_valid([0, 40, 59, 100]))
+        self.assertFalse(are_subject_marks_valid([0, 40, math.nan, 100, 75]))
+        self.assertFalse(are_subject_marks_valid([0, 40, math.inf, 100, 75]))
+
+    def test_tied_subject_names(self):
+        names = ["Subject 1", "Subject 2", "Subject 3", "Subject 4", "Subject 5"]
+        marks = [100, 100, 80, 100, 60]
+        self.assertEqual(
+            get_tied_subject_names(names, marks, get_highest_marks(marks)),
+            ["Subject 1", "Subject 2", "Subject 4"],
+        )
+        lowest_marks = [100, 60, 60, 80, 60]
+        self.assertEqual(
+            get_tied_subject_names(names, lowest_marks, get_lowest_marks(lowest_marks)),
+            ["Subject 2", "Subject 3", "Subject 5"],
+        )
 
 
 if __name__ == "__main__":

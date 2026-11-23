@@ -1,3 +1,6 @@
+import math
+
+
 def get_total_marks(subject_marks):
     return sum(subject_marks)
 
@@ -53,7 +56,17 @@ def are_subject_marks_valid(subject_marks):
     for marks in subject_marks:
         if isinstance(marks, bool) or not isinstance(marks, (int, float)):
             return False
+        if not math.isfinite(marks):
+            return False
         if marks < 0 or marks > 100:
             return False
 
     return True
+
+
+def get_tied_subject_names(subject_names, subject_marks, target_marks):
+    tied_names = []
+    for index in range(len(subject_names)):
+        if subject_marks[index] == target_marks:
+            tied_names.append(subject_names[index])
+    return tied_names

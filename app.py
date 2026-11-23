@@ -10,6 +10,7 @@ from calculations import (
     get_lowest_marks,
     get_percentage,
     get_subject_status,
+    get_tied_subject_names,
     get_total_marks,
 )
 
@@ -66,16 +67,12 @@ if st.button("Calculate Result"):
     highest_marks = get_highest_marks(subject_marks)
     lowest_marks = get_lowest_marks(subject_marks)
     average_marks = get_average_marks(total)
-    strongest_subjects = [
-        subject_names[index]
-        for index in range(len(subject_marks))
-        if subject_marks[index] == highest_marks
-    ]
-    weakest_subjects = [
-        subject_names[index]
-        for index in range(len(subject_marks))
-        if subject_marks[index] == lowest_marks
-    ]
+    strongest_subjects = get_tied_subject_names(
+        subject_names, subject_marks, highest_marks
+    )
+    weakest_subjects = get_tied_subject_names(
+        subject_names, subject_marks, lowest_marks
+    )
 
     passed_subjects = 0
     failed_subjects = 0
