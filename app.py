@@ -1,4 +1,6 @@
 import streamlit as st
+import csv
+import io
 
 # App title
 st.title("Student Grade Calculator")
@@ -227,3 +229,39 @@ if st.button("Calculate Result"):
             feedback = "You have passed all subjects. Keep building confidence with focused practice."
 
         st.write(feedback)
+
+        # Generate CSV data for the calculated student result
+        csv_buffer = io.StringIO()
+        csv_writer = csv.writer(csv_buffer)
+        csv_writer.writerow(["Field", "Value", "Grade", "Status"])
+        csv_writer.writerow(["Student Name", name, "", ""])
+        for index in range(len(subject_names)):
+            if subject_marks[index] >= 40:
+                subject_status = "Pass"
+            else:
+                subject_status = "Fail"
+
+            csv_writer.writerow([
+                subject_names[index],
+                subject_marks[index],
+                get_grade(subject_marks[index]),
+                subject_status,
+            ])
+
+        csv_writer.writerow(["Total Marks", total, "", ""])
+        csv_writer.writerow(["Percentage", round(percentage, 2), "", ""])
+        csv_writer.writerow(["Average Marks", average_marks, "", ""])
+        csv_writer.writerow(["Overall Grade", grade, "", ""])
+        csv_writer.writerow(["Overall Result", result, "", ""])
+        csv_writer.writerow(["Performance Category", performance_category, "", ""])
+        csv_writer.writerow(["Highest Marks", highest_marks, "", ""])
+        csv_writer.writerow(["Lowest Marks", lowest_marks, "", ""])
+
+        csv_data = "\ufeff" + csv_buffer.getvalue()
+
+        st.download_button(
+            "Download Result as CSV",
+            data=csv_data,
+            file_name="student_result.csv",
+            mime="text/csv",
+        )
