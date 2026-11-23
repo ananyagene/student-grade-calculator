@@ -206,3 +206,24 @@ if st.button("Calculate Result"):
                 "**" + subject_names[index] + ":**",
                 suggestion,
             )
+
+        # Give one overall feedback message based on subject results
+        st.subheader("Overall Result Feedback")
+        if failed_subjects > 0:
+            feedback = (
+                "Give extra attention to the "
+                + str(failed_subjects)
+                + " failed subject(s), strengthen the basics, and revise regularly."
+            )
+        elif performance_category == "Outstanding":
+            feedback = "An exceptional overall effort. Keep challenging yourself to maintain this level."
+        elif performance_category == "Excellent":
+            feedback = "A strong overall performance. Regular practice can help you reach the top level."
+        elif performance_category == "Good":
+            feedback = "A solid overall result. Consistent revision can make the performance even better."
+        elif performance_category == "Needs Improvement":
+            feedback = "You have passed all subjects. A structured study plan will help you improve overall."
+        else:
+            feedback = "You have passed all subjects. Keep building confidence with focused practice."
+
+        st.write(feedback)
