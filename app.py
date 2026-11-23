@@ -43,9 +43,16 @@ if st.button("Calculate Result"):
         else:
             grade = "F"
 
+        # Determine pass or fail
+        if percentage >= 40:
+            result = "Pass"
+        else:
+            result = "Fail"
+
         # Display final result
         st.success("Result Calculated Successfully!")
         st.write("**Student Name:**", name)
         st.write("**Total Marks:**", total, "/ 500")
         st.write("**Percentage:**", round(percentage, 2), "%")
         st.write("**Grade:**", grade)
+        st.write("**Result:**", result)
