@@ -24,6 +24,7 @@ from calculations import (
     save_student_result,
     get_saved_student_table,
     get_class_leaderboard,
+    get_class_analytics,
 )
 
 
@@ -380,6 +381,63 @@ class CalculationTests(unittest.TestCase):
             [row["Student Name"] for row in leaderboard],
             ["Three Subjects", "Ten Subjects"],
         )
+
+    def test_class_analytics_empty(self):
+        analytics = get_class_analytics([])
+        self.assertEqual(analytics["total_students"], 0)
+        self.assertEqual(analytics["class_average"], 0.0)
+        self.assertEqual(analytics["highest_percentage"], 0.0)
+        self.assertEqual(analytics["lowest_percentage"], 0.0)
+        self.assertEqual(analytics["passed_students"], 0)
+        self.assertEqual(analytics["failed_students"], 0)
+        self.assertEqual(analytics["pass_rate"], 0.0)
+
+    def test_class_analytics_one_student(self):
+        students = [{"percentage": 80, "overall_result": "Pass"}]
+        analytics = get_class_analytics(students)
+        self.assertEqual(analytics["total_students"], 1)
+        self.assertEqual(analytics["class_average"], 80.0)
+        self.assertEqual(analytics["highest_percentage"], 80.0)
+        self.assertEqual(analytics["lowest_percentage"], 80.0)
+        self.assertEqual(analytics["passed_students"], 1)
+        self.assertEqual(analytics["failed_students"], 0)
+        self.assertEqual(analytics["pass_rate"], 100.0)
+
+    def test_class_analytics_multiple_students(self):
+        students = [
+            {"percentage": 90, "overall_result": "Pass"},
+            {"percentage": 70, "overall_result": "Pass"},
+            {"percentage": 35, "overall_result": "Fail"},
+        ]
+        analytics = get_class_analytics(students)
+        self.assertEqual(analytics["total_students"], 3)
+        self.assertEqual(analytics["class_average"], 65.0)
+        self.assertEqual(analytics["highest_percentage"], 90.0)
+        self.assertEqual(analytics["lowest_percentage"], 35.0)
+        self.assertEqual(analytics["passed_students"], 2)
+        self.assertEqual(analytics["failed_students"], 1)
+        self.assertEqual(analytics["pass_rate"], 66.67)
+
+    def test_class_analytics_supports_different_subject_counts(self):
+        students = [
+            {"percentage": 63.33, "overall_result": "Pass", "subject_count": 3},
+            {"percentage": 55, "overall_result": "Pass", "subject_count": 10},
+            {"percentage": 30, "overall_result": "Fail", "subject_count": 5},
+        ]
+        analytics = get_class_analytics(students)
+        self.assertEqual(analytics["class_average"], 49.44)
+        self.assertEqual(analytics["highest_percentage"], 63.33)
+        self.assertEqual(analytics["lowest_percentage"], 30.0)
+        self.assertEqual(analytics["pass_rate"], 66.67)
+
+    def test_class_analytics_does_not_mutate_saved_records(self):
+        students = [
+            {"percentage": 90, "overall_result": "Pass"},
+            {"percentage": 70, "overall_result": "Pass"},
+        ]
+        original = [dict(student) for student in students]
+        get_class_analytics(students)
+        self.assertEqual(students, original)
 
     def test_report_card_generation_for_subject_counts(self):
         for subject_count in (3, 5, 10):

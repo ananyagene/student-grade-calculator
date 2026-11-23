@@ -206,3 +206,38 @@ def get_class_leaderboard(saved_students):
         previous_percentage = percentage
 
     return leaderboard
+
+
+def get_class_analytics(saved_students):
+    if not saved_students:
+        return {
+            "total_students": 0,
+            "class_average": 0.0,
+            "highest_percentage": 0.0,
+            "lowest_percentage": 0.0,
+            "passed_students": 0,
+            "failed_students": 0,
+            "pass_rate": 0.0,
+        }
+
+    percentages = [
+        float(student["percentage"])
+        for student in saved_students
+    ]
+    passed_students = 0
+    for student in saved_students:
+        if str(student["overall_result"]).strip().lower() == "pass":
+            passed_students += 1
+
+    total_students = len(saved_students)
+    failed_students = total_students - passed_students
+
+    return {
+        "total_students": total_students,
+        "class_average": round(sum(percentages) / total_students, 2),
+        "highest_percentage": round(max(percentages), 2),
+        "lowest_percentage": round(min(percentages), 2),
+        "passed_students": passed_students,
+        "failed_students": failed_students,
+        "pass_rate": round((passed_students / total_students) * 100, 2),
+    }

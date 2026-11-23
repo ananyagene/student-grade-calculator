@@ -22,6 +22,7 @@ from calculations import (
     is_valid_academic_year,
     get_saved_student_table,
     get_class_leaderboard,
+    get_class_analytics,
     save_student_result,
 )
 
@@ -395,3 +396,29 @@ if leaderboard:
     st.table(leaderboard)
 else:
     st.info("Save at least one student result to create the class leaderboard.")
+
+st.subheader("Class Analytics")
+class_analytics = get_class_analytics(st.session_state["saved_students"])
+
+metric_row_one = st.columns(4)
+metric_row_one[0].metric("Total Students", class_analytics["total_students"])
+metric_row_one[1].metric(
+    "Class Average Percentage",
+    f"{class_analytics['class_average']:.2f}%",
+)
+metric_row_one[2].metric(
+    "Highest Percentage",
+    f"{class_analytics['highest_percentage']:.2f}%",
+)
+metric_row_one[3].metric(
+    "Lowest Percentage",
+    f"{class_analytics['lowest_percentage']:.2f}%",
+)
+
+metric_row_two = st.columns(3)
+metric_row_two[0].metric("Passed Students", class_analytics["passed_students"])
+metric_row_two[1].metric("Failed Students", class_analytics["failed_students"])
+metric_row_two[2].metric(
+    "Class Pass Rate",
+    f"{class_analytics['pass_rate']:.2f}%",
+)
