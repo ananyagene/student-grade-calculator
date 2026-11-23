@@ -49,6 +49,16 @@ def clean_student_name(name):
     return name.strip()
 
 
+def clean_subject_names(subject_names):
+    cleaned_names = []
+    for name in subject_names:
+        if isinstance(name, str):
+            cleaned_names.append(name.strip())
+        else:
+            cleaned_names.append("")
+    return cleaned_names
+
+
 def are_subject_marks_valid(subject_marks):
     if len(subject_marks) != 5:
         return False

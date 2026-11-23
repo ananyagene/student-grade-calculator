@@ -3,6 +3,7 @@ import math
 
 from calculations import (
     are_subject_marks_valid,
+    clean_subject_names,
     clean_student_name,
     get_average_marks,
     get_grade,
@@ -73,6 +74,17 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(clean_student_name("  Ananya  "), "Ananya")
         self.assertEqual(clean_student_name("   "), "")
         self.assertEqual(clean_student_name(None), "")
+
+    def test_clean_subject_names(self):
+        names = ["  Python  ", "Mathematics", " DSA ", "Data Science", "Git"]
+        self.assertEqual(
+            clean_subject_names(names),
+            ["Python", "Mathematics", "DSA", "Data Science", "Git"],
+        )
+
+    def test_empty_or_whitespace_subject_names(self):
+        names = clean_subject_names(["Python", "", "   ", "Data Science", "Git"])
+        self.assertFalse(all(names))
 
     def test_subject_marks_validation(self):
         self.assertTrue(are_subject_marks_valid([0, 40, 59, 100, 75]))

@@ -3,6 +3,7 @@ import csv
 import io
 from calculations import (
     are_subject_marks_valid,
+    clean_subject_names,
     clean_student_name,
     get_average_marks,
     get_grade,
@@ -24,6 +25,11 @@ st.write("Welcome! Enter your details and marks to calculate your grade.")
 # It clears all input fields before the page reloads
 def reset_fields():
     st.session_state["name"] = ""
+    st.session_state["subject1_name"] = "Subject 1"
+    st.session_state["subject2_name"] = "Subject 2"
+    st.session_state["subject3_name"] = "Subject 3"
+    st.session_state["subject4_name"] = "Subject 4"
+    st.session_state["subject5_name"] = "Subject 5"
     st.session_state["marks1"] = 0
     st.session_state["marks2"] = 0
     st.session_state["marks3"] = 0
@@ -36,12 +42,33 @@ st.button("Reset", on_click=reset_fields)
 # Student name input
 name = st.text_input("Enter Student Name", key="name")
 
+# Custom subject names
+st.session_state.setdefault("subject1_name", "Subject 1")
+st.session_state.setdefault("subject2_name", "Subject 2")
+st.session_state.setdefault("subject3_name", "Subject 3")
+st.session_state.setdefault("subject4_name", "Subject 4")
+st.session_state.setdefault("subject5_name", "Subject 5")
+
+subject1_name = st.text_input("Subject 1 Name", key="subject1_name")
+subject2_name = st.text_input("Subject 2 Name", key="subject2_name")
+subject3_name = st.text_input("Subject 3 Name", key="subject3_name")
+subject4_name = st.text_input("Subject 4 Name", key="subject4_name")
+subject5_name = st.text_input("Subject 5 Name", key="subject5_name")
+
+subject_names_preview = clean_subject_names([
+    subject1_name,
+    subject2_name,
+    subject3_name,
+    subject4_name,
+    subject5_name,
+])
+
 # Subject marks inputs (each out of 100)
-marks1 = st.number_input("Subject 1 Marks", min_value=0, max_value=100, key="marks1")
-marks2 = st.number_input("Subject 2 Marks", min_value=0, max_value=100, key="marks2")
-marks3 = st.number_input("Subject 3 Marks", min_value=0, max_value=100, key="marks3")
-marks4 = st.number_input("Subject 4 Marks", min_value=0, max_value=100, key="marks4")
-marks5 = st.number_input("Subject 5 Marks", min_value=0, max_value=100, key="marks5")
+marks1 = st.number_input(f"{subject_names_preview[0]} Marks", min_value=0, max_value=100, key="marks1")
+marks2 = st.number_input(f"{subject_names_preview[1]} Marks", min_value=0, max_value=100, key="marks2")
+marks3 = st.number_input(f"{subject_names_preview[2]} Marks", min_value=0, max_value=100, key="marks3")
+marks4 = st.number_input(f"{subject_names_preview[3]} Marks", min_value=0, max_value=100, key="marks4")
+marks5 = st.number_input(f"{subject_names_preview[4]} Marks", min_value=0, max_value=100, key="marks5")
 
 # Calculate result when button is clicked
 if st.button("Calculate Result"):
@@ -50,6 +77,18 @@ if st.button("Calculate Result"):
     name = clean_student_name(name)
     if name == "":
         st.error("Please enter the student name.")
+        st.stop()
+
+    # Remove extra spaces and validate custom subject names
+    subject_names = clean_subject_names([
+        subject1_name,
+        subject2_name,
+        subject3_name,
+        subject4_name,
+        subject5_name,
+    ])
+    if not all(subject_names):
+        st.error("Please enter a name for all five subjects.")
         st.stop()
 
     # Recheck all subject marks before calculating results
@@ -62,7 +101,6 @@ if st.button("Calculate Result"):
     total = get_total_marks(subject_marks)
 
     # Calculate highest and lowest subject marks
-    subject_names = ["Subject 1", "Subject 2", "Subject 3", "Subject 4", "Subject 5"]
     subject_marks = [marks1, marks2, marks3, marks4, marks5]
     highest_marks = get_highest_marks(subject_marks)
     lowest_marks = get_lowest_marks(subject_marks)
