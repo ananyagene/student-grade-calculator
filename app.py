@@ -1,6 +1,15 @@
 import streamlit as st
 import csv
 import io
+from calculations import (
+    get_average_marks,
+    get_grade,
+    get_highest_marks,
+    get_lowest_marks,
+    get_percentage,
+    get_subject_status,
+    get_total_marks,
+)
 
 # App title
 st.title("Student Grade Calculator")
@@ -31,21 +40,6 @@ marks3 = st.number_input("Subject 3 Marks", min_value=0, max_value=100, key="mar
 marks4 = st.number_input("Subject 4 Marks", min_value=0, max_value=100, key="marks4")
 marks5 = st.number_input("Subject 5 Marks", min_value=0, max_value=100, key="marks5")
 
-# Determine grade for one subject
-def get_grade(marks):
-    if marks >= 90:
-        return "A"
-    elif marks >= 80:
-        return "B"
-    elif marks >= 70:
-        return "C"
-    elif marks >= 60:
-        return "D"
-    elif marks >= 40:
-        return "E"
-    else:
-        return "F"
-
 # Calculate result when button is clicked
 if st.button("Calculate Result"):
 
@@ -63,14 +57,14 @@ if st.button("Calculate Result"):
             st.stop()
 
     # Calculate total marks out of 500
-    total = marks1 + marks2 + marks3 + marks4 + marks5
+    total = get_total_marks(subject_marks)
 
     # Calculate highest and lowest subject marks
     subject_names = ["Subject 1", "Subject 2", "Subject 3", "Subject 4", "Subject 5"]
     subject_marks = [marks1, marks2, marks3, marks4, marks5]
-    highest_marks = max(subject_marks)
-    lowest_marks = min(subject_marks)
-    average_marks = round(total / 5, 2)
+    highest_marks = get_highest_marks(subject_marks)
+    lowest_marks = get_lowest_marks(subject_marks)
+    average_marks = get_average_marks(total)
     strongest_subjects = [
         subject_names[index]
         for index in range(len(subject_marks))
@@ -85,13 +79,13 @@ if st.button("Calculate Result"):
     passed_subjects = 0
     failed_subjects = 0
     for marks in subject_marks:
-        if marks >= 40:
+        if get_subject_status(marks) == "Pass":
             passed_subjects = passed_subjects + 1
         else:
             failed_subjects = failed_subjects + 1
 
     # Calculate percentage
-    percentage = (total / 500) * 100
+    percentage = get_percentage(total)
 
     # Determine performance category based on percentage
     if percentage >= 90:
@@ -166,10 +160,7 @@ if st.button("Calculate Result"):
     st.subheader("Subject-Wise Grades")
     subject_table = []
     for index in range(len(subject_names)):
-        if subject_marks[index] >= 40:
-            subject_status = "Pass"
-        else:
-            subject_status = "Fail"
+        subject_status = get_subject_status(subject_marks[index])
 
         subject_table.append({
             "Subject": subject_names[index],
@@ -249,10 +240,7 @@ if st.button("Calculate Result"):
     csv_writer.writerow(["Field", "Value", "Grade", "Status"])
     csv_writer.writerow(["Student Name", name, "", ""])
     for index in range(len(subject_names)):
-        if subject_marks[index] >= 40:
-            subject_status = "Pass"
-        else:
-            subject_status = "Fail"
+        subject_status = get_subject_status(subject_marks[index])
 
         csv_writer.writerow([
             subject_names[index],
