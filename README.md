@@ -18,6 +18,10 @@ This project is developed as an academic project to practice **Git and GitHub** 
 - Highest and lowest subject marks
 - Average marks rounded to 2 decimal places
 - Result Summary with the number of passed and failed subjects
+- Performance Category based on the overall percentage
+- Subject Performance bar chart for all five subjects
+- Strongest and weakest subject insights, including tied subjects
+- Subject-wise Pass/Fail status for each subject
 
 ## Grading System
 
