@@ -30,6 +30,7 @@ from calculations import (
     search_saved_students,
     get_class_leaderboard,
     get_class_analytics,
+    get_grade_distribution,
 )
 
 
@@ -443,6 +444,99 @@ class CalculationTests(unittest.TestCase):
         original = [dict(student) for student in students]
         get_class_analytics(students)
         self.assertEqual(students, original)
+
+    def test_grade_distribution_empty(self):
+        distribution = get_grade_distribution([])
+        self.assertEqual(
+            [row["Grade"] for row in distribution],
+            ["A", "B", "C", "D", "E", "F"],
+        )
+        self.assertTrue(all(row["Student Count"] == 0 for row in distribution))
+
+    def test_grade_distribution_one_student(self):
+        distribution = get_grade_distribution([{"percentage": 95}])
+        counts = {row["Grade"]: row["Student Count"] for row in distribution}
+        self.assertEqual(counts["A"], 1)
+        self.assertEqual(sum(counts.values()), 1)
+
+    def test_grade_distribution_multiple_grades(self):
+        students = [
+            {"percentage": 95},
+            {"percentage": 82},
+            {"percentage": 75},
+            {"percentage": 65},
+            {"percentage": 45},
+            {"percentage": 20},
+        ]
+        distribution = get_grade_distribution(students)
+        counts = {row["Grade"]: row["Student Count"] for row in distribution}
+        self.assertEqual(counts, {"A": 1, "B": 1, "C": 1, "D": 1, "E": 1, "F": 1})
+        self.assertEqual(sum(counts.values()), 6)
+
+    def test_grade_distribution_missing_categories_are_zero(self):
+        students = [
+            {"percentage": 95},
+            {"percentage": 91},
+        ]
+        distribution = get_grade_distribution(students)
+        counts = {row["Grade"]: row["Student Count"] for row in distribution}
+        self.assertEqual(counts["A"], 2)
+        self.assertEqual(counts["B"], 0)
+        self.assertEqual(counts["F"], 0)
+
+    def test_grade_distribution_fixed_order_and_totals(self):
+        students = [
+            {"percentage": 90},
+            {"percentage": 80},
+            {"percentage": 70},
+            {"percentage": 60},
+        ]
+        distribution = get_grade_distribution(students)
+        self.assertEqual(
+            [row["Grade"] for row in distribution],
+            ["A", "B", "C", "D", "E", "F"],
+        )
+        self.assertEqual(
+            sum(row["Student Count"] for row in distribution),
+            len(students),
+        )
+
+    def test_updated_student_grade_is_reflected(self):
+        students = [{
+            "student_name": "Ananya",
+            "roll_number": "001",
+            "semester": "Semester 1",
+            "academic_year": "2026-2027",
+            "percentage": 70,
+        }]
+        history = []
+        updated = dict(students[0])
+        updated["percentage"] = 95
+        update_saved_student(saved_students=students, result_history=history,
+                             new_result=updated,
+                             timestamp="2026-11-24 10:00:00")
+        distribution = get_grade_distribution(students)
+        counts = {row["Grade"]: row["Student Count"] for row in distribution}
+        self.assertEqual(counts["A"], 1)
+        self.assertEqual(counts["C"], 0)
+
+    def test_grade_distribution_excludes_history_and_preserves_records(self):
+        students = [
+            {"percentage": 95, "roll_number": "001"},
+            {"percentage": 55, "roll_number": "002"},
+        ]
+        history = [
+            {"percentage": 100, "roll_number": "001"},
+            {"percentage": 20, "roll_number": "002"},
+        ]
+        original = [dict(student) for student in students]
+        distribution = get_grade_distribution(students)
+        counts = {row["Grade"]: row["Student Count"] for row in distribution}
+        self.assertEqual(counts["A"], 1)
+        self.assertEqual(counts["E"], 1)
+        self.assertEqual(sum(counts.values()), len(students))
+        self.assertEqual(students, original)
+        self.assertEqual(len(history), 2)
 
     def test_search_empty_student_list(self):
         self.assertEqual(search_saved_students([]), [])

@@ -244,6 +244,21 @@ def get_class_analytics(saved_students):
     }
 
 
+def get_grade_distribution(saved_students):
+    grades = ["A", "B", "C", "D", "E", "F"]
+    distribution = {grade: 0 for grade in grades}
+
+    for student in saved_students:
+        percentage = float(student["percentage"])
+        grade = get_grade(percentage)
+        distribution[grade] += 1
+
+    return [
+        {"Grade": grade, "Student Count": distribution[grade]}
+        for grade in grades
+    ]
+
+
 def search_saved_students(saved_students, query=""):
     if not saved_students:
         return []

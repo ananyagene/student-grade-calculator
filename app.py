@@ -24,6 +24,7 @@ from calculations import (
     search_saved_students,
     get_class_leaderboard,
     get_class_analytics,
+    get_grade_distribution,
     save_student_result,
     find_saved_student,
     get_student_history,
@@ -605,3 +606,23 @@ metric_row_two[2].metric(
     f"{class_analytics['pass_rate']:.2f}%",
     border=True,
 )
+
+st.subheader("Grade Distribution", icon=":material/bar_chart:")
+grade_distribution = get_grade_distribution(st.session_state["saved_students"])
+if st.session_state["saved_students"]:
+    chart_data = {
+        row["Grade"]: row["Student Count"]
+        for row in grade_distribution
+    }
+    chart_col, table_col = st.columns([2, 1])
+    with chart_col:
+        st.bar_chart(
+            chart_data,
+            x_label="Overall Grade",
+            y_label="Number of Students",
+            alt="Grade distribution for active saved student results",
+        )
+    with table_col:
+        st.table(grade_distribution)
+else:
+    st.info("Save at least one student result to view the grade distribution.")
