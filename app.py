@@ -18,12 +18,34 @@ marks5 = st.number_input("Subject 5 Marks", min_value=0, max_value=100, value=0)
 
 # Calculate result when button is clicked
 if st.button("Calculate Result"):
-    # Calculate total marks out of 500
-    total = marks1 + marks2 + marks3 + marks4 + marks5
 
-    # Calculate percentage
-    percentage = (total / 500) * 100
+    # Validate that student name is not empty
+    if name == "":
+        st.error("Please enter the student name.")
+    else:
+        # Calculate total marks out of 500
+        total = marks1 + marks2 + marks3 + marks4 + marks5
 
-    # Display total and percentage
-    st.write("Total Marks:", total, "/ 500")
-    st.write("Percentage:", round(percentage, 2), "%")
+        # Calculate percentage
+        percentage = (total / 500) * 100
+
+        # Determine grade based on percentage
+        if percentage >= 90:
+            grade = "A"
+        elif percentage >= 80:
+            grade = "B"
+        elif percentage >= 70:
+            grade = "C"
+        elif percentage >= 60:
+            grade = "D"
+        elif percentage >= 40:
+            grade = "E"
+        else:
+            grade = "F"
+
+        # Display final result
+        st.success("Result Calculated Successfully!")
+        st.write("**Student Name:**", name)
+        st.write("**Total Marks:**", total, "/ 500")
+        st.write("**Percentage:**", round(percentage, 2), "%")
+        st.write("**Grade:**", grade)
