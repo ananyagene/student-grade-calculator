@@ -1,5 +1,6 @@
 import math
 import re
+import copy
 
 
 def get_total_marks(subject_marks):
@@ -129,3 +130,42 @@ def get_tied_subject_names(subject_names, subject_marks, target_marks):
         if subject_marks[index] == target_marks:
             tied_names.append(subject_names[index])
     return tied_names
+
+
+def is_duplicate_saved_result(saved_students, student_result):
+    roll_number = str(student_result["roll_number"]).strip().upper()
+    semester = str(student_result["semester"]).strip()
+    academic_year = str(student_result["academic_year"]).strip()
+
+    for saved in saved_students:
+        if (
+            str(saved["roll_number"]).strip().upper() == roll_number
+            and str(saved["semester"]).strip() == semester
+            and str(saved["academic_year"]).strip() == academic_year
+        ):
+            return True
+    return False
+
+
+def save_student_result(saved_students, student_result):
+    if is_duplicate_saved_result(saved_students, student_result):
+        return False
+
+    saved_students.append(copy.deepcopy(student_result))
+    return True
+
+
+def get_saved_student_table(saved_students):
+    table_rows = []
+    for student in saved_students:
+        table_rows.append({
+            "Student Name": student["student_name"],
+            "Roll Number": student["roll_number"],
+            "Semester": student["semester"],
+            "Academic Year": student["academic_year"],
+            "Total Marks": student["total_marks"],
+            "Percentage": student["percentage"],
+            "Overall Grade": student["overall_grade"],
+            "Pass/Fail": student["overall_result"],
+        })
+    return table_rows

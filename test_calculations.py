@@ -20,6 +20,9 @@ from calculations import (
     get_total_marks,
     get_semester_options,
     is_valid_academic_year,
+    is_duplicate_saved_result,
+    save_student_result,
+    get_saved_student_table,
 )
 
 
@@ -166,6 +169,111 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(len(semesters), 8)
         self.assertEqual(semesters[0], "Semester 1")
         self.assertEqual(semesters[-1], "Semester 8")
+
+    def test_save_one_student_result(self):
+        saved = []
+        result = {
+            "student_name": "Ananya",
+            "roll_number": "ROLL001",
+            "semester": "Semester 1",
+            "academic_year": "2026-2027",
+            "total_marks": 400,
+            "percentage": 80,
+            "overall_grade": "B",
+            "overall_result": "Pass",
+        }
+        self.assertTrue(save_student_result(saved, result))
+        self.assertEqual(len(saved), 1)
+
+    def test_save_multiple_and_duplicate_students(self):
+        saved = []
+        first = {
+            "student_name": "Ananya",
+            "roll_number": "ROLL001",
+            "semester": "Semester 1",
+            "academic_year": "2026-2027",
+            "total_marks": 400,
+            "percentage": 80,
+            "overall_grade": "B",
+            "overall_result": "Pass",
+        }
+        second = dict(first)
+        second["student_name"] = "Rohan"
+        second["roll_number"] = "ROLL002"
+
+        self.assertTrue(save_student_result(saved, first))
+        self.assertTrue(save_student_result(saved, second))
+        self.assertEqual(len(saved), 2)
+
+        duplicate = dict(second)
+        duplicate["roll_number"] = "  roll002  "
+        duplicate["student_name"] = "Changed Name"
+        self.assertFalse(save_student_result(saved, duplicate))
+        self.assertEqual(len(saved), 2)
+
+    def test_saved_result_is_independent_snapshot(self):
+        saved = []
+        result = {
+            "student_name": "Ananya",
+            "roll_number": "001",
+            "semester": "Semester 1",
+            "academic_year": "2026-2027",
+            "total_marks": 400,
+            "percentage": 80,
+            "overall_grade": "B",
+            "overall_result": "Pass",
+        }
+        self.assertTrue(save_student_result(saved, result))
+        result["student_name"] = "Changed"
+        result["total_marks"] = 100
+        self.assertEqual(saved[0]["student_name"], "Ananya")
+        self.assertEqual(saved[0]["total_marks"], 400)
+
+    def test_duplicate_roll_allowed_in_different_semester(self):
+        saved = []
+        first = {
+            "student_name": "Ananya",
+            "roll_number": "001",
+            "semester": "Semester 1",
+            "academic_year": "2026-2027",
+            "total_marks": 400,
+            "percentage": 80,
+            "overall_grade": "B",
+            "overall_result": "Pass",
+        }
+        second = dict(first)
+        second["semester"] = "Semester 2"
+
+        self.assertTrue(save_student_result(saved, first))
+        self.assertTrue(save_student_result(saved, second))
+        self.assertEqual(len(saved), 2)
+
+    def test_saved_table_contains_required_columns(self):
+        result = {
+            "student_name": "Ananya",
+            "roll_number": "001",
+            "semester": "Semester 1",
+            "academic_year": "2026-2027",
+            "total_marks": 400,
+            "percentage": 80,
+            "overall_grade": "B",
+            "overall_result": "Pass",
+        }
+        table = get_saved_student_table([result])
+        self.assertEqual(len(table), 1)
+        self.assertEqual(
+            set(table[0]),
+            {
+                "Student Name",
+                "Roll Number",
+                "Semester",
+                "Academic Year",
+                "Total Marks",
+                "Percentage",
+                "Overall Grade",
+                "Pass/Fail",
+            },
+        )
 
     def test_report_card_generation_for_subject_counts(self):
         for subject_count in (3, 5, 10):

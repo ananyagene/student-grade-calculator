@@ -20,6 +20,8 @@ from calculations import (
     get_total_marks,
     get_semester_options,
     is_valid_academic_year,
+    get_saved_student_table,
+    save_student_result,
 )
 
 
@@ -32,6 +34,8 @@ def reset_fields():
     st.session_state["roll_number"] = ""
     st.session_state["semester"] = "Semester 1"
     st.session_state["academic_year"] = "2026-2027"
+    st.session_state["last_calculated_result"] = None
+    st.session_state["save_message"] = ""
     st.session_state["subject_count"] = 5
     for index in range(1, 11):
         st.session_state[f"subject{index}_name"] = f"Subject {index}"
@@ -39,6 +43,9 @@ def reset_fields():
 
 
 st.button("Reset", on_click=reset_fields)
+st.session_state.setdefault("saved_students", [])
+st.session_state.setdefault("last_calculated_result", None)
+st.session_state.setdefault("save_message", "")
 
 name = st.text_input("Enter Student Name", key="name")
 st.session_state.setdefault("roll_number", "")
@@ -337,3 +344,46 @@ if st.button("Calculate Result"):
         file_name="student_report_card.pdf",
         mime="application/pdf",
     )
+
+    st.session_state["last_calculated_result"] = {
+        "student_name": name,
+        "roll_number": roll_number,
+        "semester": semester,
+        "academic_year": academic_year,
+        "total_marks": total,
+        "percentage": round(percentage, 2),
+        "overall_grade": grade,
+        "overall_result": result,
+        "subject_count": subject_count,
+        "subject_names": list(subject_names),
+        "subject_marks": list(subject_marks),
+    }
+    st.session_state["save_message"] = ""
+
+st.subheader("Saved Student Results")
+
+if st.session_state["last_calculated_result"] is not None:
+    if st.button("Save Student Result"):
+        saved = save_student_result(
+            st.session_state["saved_students"],
+            st.session_state["last_calculated_result"],
+        )
+        if saved:
+            st.session_state["save_message"] = "Student result saved successfully."
+        else:
+            st.session_state["save_message"] = (
+                "A result with this roll number already exists for "
+                "the same semester and academic year."
+            )
+
+    if st.session_state["save_message"]:
+        if "saved successfully" in st.session_state["save_message"]:
+            st.success(st.session_state["save_message"])
+        else:
+            st.warning(st.session_state["save_message"])
+
+saved_table = get_saved_student_table(st.session_state["saved_students"])
+if saved_table:
+    st.table(saved_table)
+else:
+    st.caption("No student results saved yet.")
