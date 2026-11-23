@@ -187,3 +187,22 @@ if st.button("Calculate Result"):
             ", ".join(weakest_subjects),
             "-", lowest_marks, "/ 100",
         )
+
+        # Display improvement suggestions for each subject
+        st.subheader("Subject Improvement Suggestions")
+        for index in range(len(subject_names)):
+            if subject_marks[index] >= 90:
+                suggestion = "Excellent performance. Keep it up!"
+            elif subject_marks[index] >= 75:
+                suggestion = "Very good. Continue practicing."
+            elif subject_marks[index] >= 60:
+                suggestion = "Good progress. Focus on revision."
+            elif subject_marks[index] >= 40:
+                suggestion = "More practice and revision recommended."
+            else:
+                suggestion = "Focus on fundamentals and seek additional support."
+
+            st.write(
+                "**" + subject_names[index] + ":**",
+                suggestion,
+            )
