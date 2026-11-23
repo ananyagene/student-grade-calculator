@@ -348,3 +348,21 @@ def reset_result_form_state(session_state):
     for index in range(1, 11):
         session_state[f"subject{index}_name"] = f"Subject {index}"
         session_state[f"marks{index}"] = 0
+
+
+def get_sample_student_data():
+    return {
+        "student_name": "Demo Student",
+        "roll_number": "DEMO001",
+        "semester": "Semester 1",
+        "academic_year": "2026-2027",
+        "subject_count": 5,
+        "subject_names": [
+            "Python",
+            "Mathematics",
+            "Data Science",
+            "DSA",
+            "Git & GitHub",
+        ],
+        "subject_marks": [92, 85, 88, 79, 95],
+    }

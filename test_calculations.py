@@ -26,6 +26,7 @@ from calculations import (
     get_student_history,
     update_saved_student,
     reset_result_form_state,
+    get_sample_student_data,
     get_saved_student_table,
     search_saved_students,
     get_class_leaderboard,
@@ -769,6 +770,33 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(leaderboard[0]["Percentage"], 95)
         self.assertEqual(analytics["highest_percentage"], 95)
         self.assertEqual(history[0]["percentage"], 80)
+
+    def test_sample_student_data(self):
+        sample = get_sample_student_data()
+        self.assertEqual(sample["student_name"], "Demo Student")
+        self.assertEqual(sample["roll_number"], "DEMO001")
+        self.assertEqual(sample["semester"], "Semester 1")
+        self.assertEqual(sample["academic_year"], "2026-2027")
+        self.assertEqual(sample["subject_count"], 5)
+        self.assertEqual(
+            sample["subject_names"],
+            ["Python", "Mathematics", "Data Science", "DSA", "Git & GitHub"],
+        )
+        self.assertEqual(
+            sample["subject_marks"],
+            [92, 85, 88, 79, 95],
+        )
+        total = get_total_marks(sample["subject_marks"])
+        self.assertEqual(total, 439)
+        self.assertEqual(get_percentage(total, 5), 87.8)
+
+    def test_loading_sample_does_not_change_saved_students_or_history(self):
+        saved = [{"roll_number": "ROLL001"}]
+        history = [{"version": 1}]
+        sample = get_sample_student_data()
+        self.assertEqual(saved, [{"roll_number": "ROLL001"}])
+        self.assertEqual(history, [{"version": 1}])
+        self.assertEqual(sample["roll_number"], "DEMO001")
 
     def test_reset_preserves_saved_students_and_history(self):
         session_state = {

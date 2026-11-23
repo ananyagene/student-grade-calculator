@@ -30,6 +30,7 @@ from calculations import (
     get_student_history,
     update_saved_student,
     reset_result_form_state,
+    get_sample_student_data,
 )
 
 st.set_page_config(
@@ -62,6 +63,26 @@ def reset_fields():
     reset_result_form_state(st.session_state)
 
 
+def load_demo_student():
+    sample = get_sample_student_data()
+    st.session_state["name"] = sample["student_name"]
+    st.session_state["roll_number"] = sample["roll_number"]
+    st.session_state["semester"] = sample["semester"]
+    st.session_state["academic_year"] = sample["academic_year"]
+    st.session_state["subject_count"] = sample["subject_count"]
+    for index in range(1, 11):
+        if index <= 5:
+            subject_name = sample["subject_names"][index - 1]
+            subject_marks = sample["subject_marks"][index - 1]
+        else:
+            subject_name = f"Subject {index}"
+            subject_marks = 0
+        st.session_state[f"subject{index}_name"] = subject_name
+        st.session_state[f"marks{index}"] = subject_marks
+    st.session_state["last_calculated_result"] = None
+    st.session_state["save_message"] = ""
+
+
 st.session_state.setdefault("saved_students", [])
 st.session_state.setdefault("last_calculated_result", None)
 st.session_state.setdefault("save_message", "")
@@ -79,6 +100,17 @@ with header_right:
 
 with st.container(border=True, key="student-details"):
     st.subheader("Student Details", icon=":material/person:")
+
+    demo_col, subject_count_col = st.columns([1, 3])
+    with demo_col:
+        st.button(
+            "Load Sample Student",
+            on_click=load_demo_student,
+            type="secondary",
+            icon=":material/science:",
+            width="stretch",
+        )
+        st.caption("Demonstration data only")
 
     name_col, roll_col = st.columns(2)
     with name_col:
