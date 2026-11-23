@@ -65,6 +65,7 @@ if st.button("Calculate Result"):
 
         # Display final result
         st.success("Result Calculated Successfully!")
+        st.subheader("Student Result")
         st.write("**Student Name:**", name)
         st.write("**Total Marks:**", total, "/ 500")
         st.write("**Percentage:**", round(percentage, 2), "%")
