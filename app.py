@@ -60,6 +60,14 @@ if st.button("Calculate Result"):
         lowest_marks = min(subject_marks)
         average_marks = round(total / 5, 2)
 
+        passed_subjects = 0
+        failed_subjects = 0
+        for marks in subject_marks:
+            if marks >= 40:
+                passed_subjects = passed_subjects + 1
+            else:
+                failed_subjects = failed_subjects + 1
+
         # Calculate percentage
         percentage = (total / 500) * 100
 
@@ -109,6 +117,12 @@ if st.button("Calculate Result"):
         st.write("**Highest Subject Marks:**", highest_marks, "/ 100")
         st.write("**Lowest Subject Marks:**", lowest_marks, "/ 100")
         st.write("**Average Marks:**", average_marks, "/ 100")
+
+        # Display a simple subject result summary
+        st.subheader("Result Summary")
+        st.write("**Number of Subjects:**", len(subject_marks))
+        st.write("**Passed Subjects:**", passed_subjects)
+        st.write("**Failed Subjects:**", failed_subjects)
 
         # Display marks and grade for each subject
         st.subheader("Subject-Wise Grades")
