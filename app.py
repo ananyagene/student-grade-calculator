@@ -31,69 +31,120 @@ from calculations import (
     reset_result_form_state,
 )
 
+st.set_page_config(
+    page_title="Student Grade Calculator",
+    page_icon=":material/school:",
+    layout="wide",
+)
 
-st.title("Student Grade Calculator")
-st.write("Welcome! Enter your details and marks to calculate your grade.")
+st.markdown(
+    """
+    <style>
+    .stApp { background-color: #F8FAFC; }
+    h1, h2, h3 { color: #203864; }
+    .stMetric { background: #FFFFFF; border: 1px solid #E2E8F0;
+                border-radius: 12px; padding: 14px; }
+    [data-testid="stTable"] { border: 1px solid #E2E8F0; border-radius: 10px; }
+    [data-testid="stAlert"] { border-radius: 10px; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+header_left, header_right = st.columns([5, 1], vertical_alignment="bottom")
+with header_left:
+    st.title("Student Grade Calculator", icon=":material/school:")
+    st.caption("Academic result dashboard")
 
 
 def reset_fields():
     reset_result_form_state(st.session_state)
 
 
-st.button("Reset", on_click=reset_fields)
 st.session_state.setdefault("saved_students", [])
 st.session_state.setdefault("last_calculated_result", None)
 st.session_state.setdefault("save_message", "")
 st.session_state.setdefault("result_history", [])
 st.session_state.setdefault("history_message", "")
 
-name = st.text_input("Enter Student Name", key="name")
-st.session_state.setdefault("roll_number", "")
-st.session_state.setdefault("semester", "Semester 1")
-st.session_state.setdefault("academic_year", "2026-2027")
-
-roll_number = st.text_input("Roll Number", key="roll_number")
-semester = st.selectbox(
-    "Semester",
-    get_semester_options(),
-    key="semester",
-)
-academic_year = st.text_input("Academic Year", key="academic_year")
-
-subject_count = st.number_input(
-    "Number of Subjects",
-    min_value=3,
-    max_value=10,
-    value=5,
-    step=1,
-    key="subject_count",
-)
-
-subject_names_input = []
-subject_marks = []
-
-for index in range(1, subject_count + 1):
-    name_key = f"subject{index}_name"
-    marks_key = f"marks{index}"
-    st.session_state.setdefault(name_key, f"Subject {index}")
-    st.session_state.setdefault(marks_key, 0)
-
-    subject_name = st.text_input(
-        f"Subject {index} Name",
-        key=name_key,
+with header_right:
+    st.button(
+        "Reset",
+        on_click=reset_fields,
+        type="secondary",
+        icon=":material/restart_alt:",
+        width="stretch",
     )
-    subject_names_input.append(subject_name)
-    subject_marks.append(
-        st.number_input(
-            f"{subject_name.strip() or f'Subject {index}'} Marks",
-            min_value=0,
-            max_value=100,
-            key=marks_key,
+
+with st.container(border=True, key="student-details"):
+    st.subheader("Student Details", icon=":material/person:")
+
+    name_col, roll_col = st.columns(2)
+    with name_col:
+        name = st.text_input("Student Name", key="name")
+    with roll_col:
+        st.session_state.setdefault("roll_number", "")
+        roll_number = st.text_input("Roll Number", key="roll_number")
+
+    semester_col, year_col, subject_count_col = st.columns(3)
+    with semester_col:
+        st.session_state.setdefault("semester", "Semester 1")
+        semester = st.selectbox(
+            "Semester",
+            get_semester_options(),
+            key="semester",
         )
+    with year_col:
+        st.session_state.setdefault("academic_year", "2026-2027")
+        academic_year = st.text_input("Academic Year", key="academic_year")
+    with subject_count_col:
+        subject_count = st.number_input(
+            "Number of Subjects",
+            min_value=3,
+            max_value=10,
+            value=5,
+            step=1,
+            key="subject_count",
+        )
+
+with st.container(border=True, key="subject-details"):
+    st.subheader("Subject Details", icon=":material/menu_book:")
+    subject_names_input = []
+    subject_marks = []
+
+    subject_columns = st.columns(2)
+    for index in range(1, subject_count + 1):
+        name_key = f"subject{index}_name"
+        marks_key = f"marks{index}"
+        st.session_state.setdefault(name_key, f"Subject {index}")
+        st.session_state.setdefault(marks_key, 0)
+
+        column = subject_columns[(index - 1) % 2]
+        with column:
+            subject_name = st.text_input(
+                f"Subject {index} Name",
+                key=name_key,
+            )
+            subject_names_input.append(subject_name)
+            subject_marks.append(
+                st.number_input(
+                    f"{subject_name.strip() or f'Subject {index}'} Marks",
+                    min_value=0,
+                    max_value=100,
+                    key=marks_key,
+                )
+            )
+
+
+with st.container(horizontal=True, key="action-row"):
+    calculate_result = st.button(
+        "Calculate Result",
+        type="primary",
+        icon=":material/calculate:",
+        width="stretch",
     )
 
-
-if st.button("Calculate Result"):
+if calculate_result:
     name = clean_student_name(name)
     if name == "":
         st.error("Please enter the student name.")
@@ -185,100 +236,107 @@ if st.button("Calculate Result"):
     else:
         remarks = "Failed"
 
-    st.success("Result Calculated Successfully!")
-    st.subheader("Student Result")
-    st.subheader("Student Information")
-    st.write("**Student Name:**", name)
-    st.write("**Roll Number:**", roll_number)
-    st.write("**Semester:**", semester)
-    st.write("**Academic Year:**", academic_year)
+    st.success("Result calculated successfully")
 
-    metric1, metric2, metric3, metric4 = st.columns(4)
-    metric1.metric("Total Marks", f"{total} / {subject_count * 100}")
-    metric2.metric("Percentage", f"{round(percentage, 2)}%")
-    metric3.metric("Average Marks", f"{average_marks} / 100")
-    metric4.metric("Overall Grade", grade)
+    with st.container(border=True, key="result-card"):
+        st.subheader("Student Result", icon=":material/article:")
 
-    st.write("**Result:**", result)
-    st.write("**Remarks:**", remarks)
-    st.write("**Performance Category:**", performance_category)
-    st.write("**Highest Subject Marks:**", highest_marks, "/ 100")
-    st.write("**Lowest Subject Marks:**", lowest_marks, "/ 100")
+        overview_tab, subjects_tab, insights_tab = st.tabs([
+            "Overview",
+            "Subjects",
+            "Insights",
+        ])
 
-    st.subheader("Result Summary")
-    st.write("**Number of Subjects:**", len(subject_marks))
-    st.write("**Passed Subjects:**", passed_subjects)
-    st.write("**Failed Subjects:**", failed_subjects)
+        with overview_tab:
+            info_col, summary_col = st.columns([1, 2])
+            with info_col:
+                st.markdown("**Student Information**")
+                st.write("**Student Name:**", name)
+                st.write("**Roll Number:**", roll_number)
+                st.write("**Semester:**", semester)
+                st.write("**Academic Year:**", academic_year)
 
-    st.subheader("Subject-Wise Grades")
-    subject_table = []
-    for index in range(subject_count):
-        subject_status = get_subject_status(subject_marks[index])
-        subject_table.append({
-            "Subject": subject_names[index],
-            "Marks": subject_marks[index],
-            "Grade": get_grade(subject_marks[index]),
-            "Pass/Fail Status": subject_status,
-        })
-    st.table(subject_table)
+            with summary_col:
+                metric1, metric2 = st.columns(2)
+                metric1.metric("Total Marks", f"{total} / {subject_count * 100}", border=True)
+                metric2.metric("Percentage", f"{round(percentage, 2)}%", border=True)
+                metric3, metric4 = st.columns(2)
+                metric3.metric("Average Marks", f"{average_marks} / 100", border=True)
+                metric4.metric("Overall Grade", grade, border=True)
 
-    st.subheader("Subject Performance Chart")
-    subject_chart_data = dict(zip(subject_names, subject_marks))
-    st.bar_chart(
-        subject_chart_data,
-        x_label="Subject",
-        y_label="Marks",
-        alt=f"Bar chart showing marks out of 100 for {subject_count} subjects",
-    )
+            status_col, remarks_col = st.columns(2)
+            with status_col:
+                st.markdown("**Result Summary**")
+                st.write("Overall Result:", result)
+                st.write("Remarks:", remarks)
+                st.write("Performance Category:", performance_category)
+            with remarks_col:
+                st.markdown("**Marks Range**")
+                st.write("Highest:", highest_marks, "/ 100")
+                st.write("Lowest:", lowest_marks, "/ 100")
+                st.write("Subjects:", len(subject_marks))
+                st.write("Passed:", passed_subjects)
+                st.write("Failed:", failed_subjects)
 
-    st.subheader("Subject Performance Insights")
-    st.write(
-        "**Strongest Subject(s):**",
-        ", ".join(strongest_subjects),
-        "-", highest_marks, "/ 100",
-    )
-    st.write(
-        "**Weakest Subject(s):**",
-        ", ".join(weakest_subjects),
-        "-", lowest_marks, "/ 100",
-    )
+        with subjects_tab:
+            subject_table = []
+            for index in range(subject_count):
+                subject_status = get_subject_status(subject_marks[index])
+                subject_table.append({
+                    "Subject": subject_names[index],
+                    "Marks": subject_marks[index],
+                    "Grade": get_grade(subject_marks[index]),
+                    "Pass/Fail Status": subject_status,
+                })
+            st.table(subject_table)
 
-    st.subheader("Subject Improvement Suggestions")
-    for index in range(subject_count):
-        if subject_marks[index] >= 90:
-            suggestion = "Excellent performance. Keep it up!"
-        elif subject_marks[index] >= 75:
-            suggestion = "Very good. Continue practicing."
-        elif subject_marks[index] >= 60:
-            suggestion = "Good progress. Focus on revision."
-        elif subject_marks[index] >= 40:
-            suggestion = "More practice and revision recommended."
-        else:
-            suggestion = "Focus on fundamentals and seek additional support."
+            subject_chart_data = dict(zip(subject_names, subject_marks))
+            st.bar_chart(
+                subject_chart_data,
+                x_label="Subject",
+                y_label="Marks",
+                alt=f"Bar chart showing marks out of 100 for {subject_count} subjects",
+            )
 
-        st.write(
-            "**" + subject_names[index] + ":**",
-            suggestion,
-        )
+        with insights_tab:
+            insight_col1, insight_col2 = st.columns(2)
+            with insight_col1:
+                st.markdown("**Strongest and Weakest**")
+                st.write("Strongest:", ", ".join(strongest_subjects), "-", highest_marks, "/ 100")
+                st.write("Weakest:", ", ".join(weakest_subjects), "-", lowest_marks, "/ 100")
+            with insight_col2:
+                st.markdown("**Overall Feedback**")
+                if failed_subjects > 0:
+                    feedback = (
+                        "Give extra attention to the "
+                        + str(failed_subjects)
+                        + " failed subject(s), strengthen the basics, and revise regularly."
+                    )
+                elif performance_category == "Outstanding":
+                    feedback = "An exceptional overall effort. Keep challenging yourself to maintain this level."
+                elif performance_category == "Excellent":
+                    feedback = "A strong overall performance. Regular practice can help you reach the top level."
+                elif performance_category == "Good":
+                    feedback = "A solid overall result. Consistent revision can make the performance even better."
+                elif performance_category == "Needs Improvement":
+                    feedback = "You have passed all subjects. A structured study plan will help you improve overall."
+                else:
+                    feedback = "You have passed all subjects. Keep building confidence with focused practice."
+                st.write(feedback)
 
-    st.subheader("Overall Result Feedback")
-    if failed_subjects > 0:
-        feedback = (
-            "Give extra attention to the "
-            + str(failed_subjects)
-            + " failed subject(s), strengthen the basics, and revise regularly."
-        )
-    elif performance_category == "Outstanding":
-        feedback = "An exceptional overall effort. Keep challenging yourself to maintain this level."
-    elif performance_category == "Excellent":
-        feedback = "A strong overall performance. Regular practice can help you reach the top level."
-    elif performance_category == "Good":
-        feedback = "A solid overall result. Consistent revision can make the performance even better."
-    elif performance_category == "Needs Improvement":
-        feedback = "You have passed all subjects. A structured study plan will help you improve overall."
-    else:
-        feedback = "You have passed all subjects. Keep building confidence with focused practice."
-    st.write(feedback)
+            st.markdown("**Subject Improvement Suggestions**")
+            for index in range(subject_count):
+                if subject_marks[index] >= 90:
+                    suggestion = "Excellent performance. Keep it up!"
+                elif subject_marks[index] >= 75:
+                    suggestion = "Very good. Continue practicing."
+                elif subject_marks[index] >= 60:
+                    suggestion = "Good progress. Focus on revision."
+                elif subject_marks[index] >= 40:
+                    suggestion = "More practice and revision recommended."
+                else:
+                    suggestion = "Focus on fundamentals and seek additional support."
+                st.write("**" + subject_names[index] + ":**", suggestion)
 
     csv_buffer = io.StringIO()
     csv_writer = csv.writer(csv_buffer)
@@ -306,12 +364,6 @@ if st.button("Calculate Result"):
     csv_writer.writerow(["Lowest Marks", lowest_marks, "", ""])
 
     csv_data = "\ufeff" + csv_buffer.getvalue()
-    st.download_button(
-        "Download Result as CSV",
-        data=csv_data,
-        file_name="student_result.csv",
-        mime="text/csv",
-    )
 
     subject_pdf_rows = []
     for index in range(subject_count):
@@ -338,12 +390,27 @@ if st.button("Calculate Result"):
         "remarks": remarks,
     }
     pdf_data = generate_report_card_pdf(report_data)
-    st.download_button(
-        "Download Report Card as PDF",
-        data=pdf_data,
-        file_name="student_report_card.pdf",
-        mime="application/pdf",
-    )
+    with st.container(border=True, key="download-results"):
+        st.subheader("Download Results", icon=":material/download:")
+        download_csv, download_pdf = st.columns(2)
+        with download_csv:
+            st.download_button(
+                "Download Result as CSV",
+                data=csv_data,
+                file_name="student_result.csv",
+                mime="text/csv",
+                icon=":material/table_view:",
+                width="stretch",
+            )
+        with download_pdf:
+            st.download_button(
+                "Download Report Card as PDF",
+                data=pdf_data,
+                file_name="student_report_card.pdf",
+                mime="application/pdf",
+                icon=":material/picture_as_pdf:",
+                width="stretch",
+            )
 
     st.session_state["last_calculated_result"] = {
         "student_name": name,
@@ -360,7 +427,7 @@ if st.button("Calculate Result"):
     }
     st.session_state["save_message"] = ""
 
-st.subheader("Result History")
+st.subheader("Result History", icon=":material/history:")
 
 if st.session_state["saved_students"]:
     history_options = []
@@ -425,7 +492,12 @@ if st.session_state["saved_students"]:
         st.caption("No previous versions saved for this student.")
 
     if st.session_state["last_calculated_result"] is not None:
-        if st.button("Update Existing Result"):
+        if st.button(
+            "Update Existing Result",
+            type="secondary",
+            icon=":material/update:",
+            width="stretch",
+        ):
             updated = update_saved_student(
                 st.session_state["saved_students"],
                 st.session_state["result_history"],
@@ -449,10 +521,15 @@ if st.session_state["history_message"]:
     else:
         st.warning(st.session_state["history_message"])
 
-st.subheader("Saved Student Results")
+st.subheader("Saved Student Results", icon=":material/groups:")
 
 if st.session_state["last_calculated_result"] is not None:
-    if st.button("Save Student Result"):
+    if st.button(
+        "Save Student Result",
+        type="primary",
+        icon=":material/save:",
+        width="stretch",
+    ):
         saved = save_student_result(
             st.session_state["saved_students"],
             st.session_state["last_calculated_result"],
@@ -477,7 +554,7 @@ if saved_table:
 else:
     st.caption("No student results saved yet.")
 
-st.subheader("Search Student")
+st.subheader("Search Student", icon=":material/search:")
 search_query = st.text_input("Search by Name or Roll Number")
 
 if not st.session_state["saved_students"]:
@@ -492,35 +569,39 @@ else:
     else:
         st.warning("No matching students found.")
 
-st.subheader("Class Leaderboard")
+st.subheader("Class Leaderboard", icon=":material/emoji_events:")
 leaderboard = get_class_leaderboard(st.session_state["saved_students"])
 if leaderboard:
     st.table(leaderboard)
 else:
     st.info("Save at least one student result to create the class leaderboard.")
 
-st.subheader("Class Analytics")
+st.subheader("Class Analytics", icon=":material/analytics:")
 class_analytics = get_class_analytics(st.session_state["saved_students"])
 
 metric_row_one = st.columns(4)
-metric_row_one[0].metric("Total Students", class_analytics["total_students"])
+metric_row_one[0].metric("Total Students", class_analytics["total_students"], border=True)
 metric_row_one[1].metric(
     "Class Average Percentage",
     f"{class_analytics['class_average']:.2f}%",
+    border=True,
 )
 metric_row_one[2].metric(
     "Highest Percentage",
     f"{class_analytics['highest_percentage']:.2f}%",
+    border=True,
 )
 metric_row_one[3].metric(
     "Lowest Percentage",
     f"{class_analytics['lowest_percentage']:.2f}%",
+    border=True,
 )
 
 metric_row_two = st.columns(3)
-metric_row_two[0].metric("Passed Students", class_analytics["passed_students"])
-metric_row_two[1].metric("Failed Students", class_analytics["failed_students"])
+metric_row_two[0].metric("Passed Students", class_analytics["passed_students"], border=True)
+metric_row_two[1].metric("Failed Students", class_analytics["failed_students"], border=True)
 metric_row_two[2].metric(
     "Class Pass Rate",
     f"{class_analytics['pass_rate']:.2f}%",
+    border=True,
 )
