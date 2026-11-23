@@ -71,6 +71,18 @@ if st.button("Calculate Result"):
         # Calculate percentage
         percentage = (total / 500) * 100
 
+        # Determine performance category based on percentage
+        if percentage >= 90:
+            performance_category = "Outstanding"
+        elif percentage >= 75:
+            performance_category = "Excellent"
+        elif percentage >= 60:
+            performance_category = "Good"
+        elif percentage >= 40:
+            performance_category = "Needs Improvement"
+        else:
+            performance_category = "Poor"
+
         # Determine grade based on percentage
         if percentage >= 90:
             grade = "A"
@@ -114,6 +126,7 @@ if st.button("Calculate Result"):
         st.write("**Grade:**", grade)
         st.write("**Result:**", result)
         st.write("**Remarks:**", remarks)
+        st.write("**Performance Category:**", performance_category)
         st.write("**Highest Subject Marks:**", highest_marks, "/ 100")
         st.write("**Lowest Subject Marks:**", lowest_marks, "/ 100")
         st.write("**Average Marks:**", average_marks, "/ 100")
