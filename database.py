@@ -243,6 +243,10 @@ class StudentDatabase:
              action, reference, description),
         )
 
+    def record_auth_event(self, account, action):
+        with self.connect() as connection:
+            self._record_audit(connection, account or {}, action, "", action.replace("_", " ").title())
+
     def get_audit_logs_for_account(self, account, action=None, limit=200):
         if not account or account.get("role") != "ADMIN":
             return []
@@ -259,10 +263,10 @@ class StudentDatabase:
         finally:
             connection.close()
 
-    def save_active_result_for_account(self, account, result):
+    def save_active_result_for_account(self, account, result, action="CREATE_RESULT"):
         if not account or account["role"] != "ADMIN":
             return False
-        return self.save_active_result(result, actor=account)
+        return self.save_active_result(result, actor=account, action=action)
 
     def update_active_result_for_account(self, account, result, original_identity=None):
         if not account or account["role"] != "ADMIN":
@@ -323,7 +327,7 @@ class StudentDatabase:
             connection.close()
 
     def provision_student_account(self, username, password_salt, password_hash,
-                                  iterations, roll_number, semester, academic_year):
+                                  iterations, roll_number, semester, academic_year, actor=None):
         connection = self.connect()
         timestamp = self._now()
         try:
@@ -360,6 +364,8 @@ class StudentDatabase:
                     timestamp,
                 ),
             )
+            if actor:
+                self._record_audit(connection, actor, "CREATE_ACCOUNT", roll_number, "Created student account")
             connection.commit()
             return True
         except sqlite3.IntegrityError:
@@ -368,7 +374,7 @@ class StudentDatabase:
         finally:
             connection.close()
 
-    def save_active_result(self, result, actor=None):
+    def save_active_result(self, result, actor=None, action="CREATE_RESULT"):
         if not self._validate_result(result):
             raise ValueError("Invalid active result data")
         timestamp = self._now()
@@ -454,7 +460,7 @@ class StudentDatabase:
                     ),
                 )
             if actor:
-                self._record_audit(connection, actor, "CREATE_RESULT",
+                self._record_audit(connection, actor, action,
                                    result["roll_number"], "Created academic result")
             connection.commit()
             return True

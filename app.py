@@ -854,6 +854,7 @@ if authentication_manager.is_admin(authenticated_account):
                     provision_student["roll_number"],
                     provision_student["semester"],
                     provision_student["academic_year"],
+                    actor=authenticated_account,
                 )
                 if created:
                     st.success("Student account created successfully.")
@@ -964,7 +965,7 @@ if uploaded_csv is not None:
                 else:
                     imported_count, skipped_count = 0, 0
                     for record in parsed_rows:
-                        if student_database.save_active_result_for_account(authenticated_account, record):
+                        if student_database.save_active_result_for_account(authenticated_account, record, action="BULK_IMPORT"):
                             imported_count += 1
                         else:
                             skipped_count += 1
@@ -1047,8 +1048,11 @@ else:
 
 
 st.subheader("Admin Audit Log", icon=":material/receipt_long:")
-audit_action = st.selectbox("Audit event type", ["All", "CREATE_RESULT", "UPDATE_RESULT", "DELETE_RESULT"])
+audit_action = st.selectbox("Audit event type", ["All", "CREATE_RESULT", "UPDATE_RESULT", "DELETE_RESULT", "ADMIN_LOGIN", "ADMIN_LOGOUT", "FAILED_ADMIN_LOGIN", "CREATE_ACCOUNT", "BULK_IMPORT"])
 audit_rows = student_database.get_audit_logs_for_account(authenticated_account, audit_action)
+audit_search = st.text_input("Search audit events").strip().casefold()
+audit_dates = st.date_input("Audit date range (UTC)", value=[])
+audit_rows = [r for r in audit_rows if (not audit_search or audit_search in " ".join(str(v) for v in r.values()).casefold()) and (len(audit_dates) != 2 or str(audit_dates[0]) <= r["timestamp"][:10] <= str(audit_dates[1]))]
 if audit_rows:
     st.dataframe([{
         "Timestamp (UTC)": row["timestamp"],

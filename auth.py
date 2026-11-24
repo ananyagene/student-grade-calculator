@@ -52,7 +52,7 @@ class AuthenticationManager:
         )
 
     def provision_student(self, username, password, roll_number,
-                          semester, academic_year):
+                          semester, academic_year, actor=None):
         if not isinstance(username, str) or username.strip() == "":
             return False
         salt, password_hash, iterations = hash_password(password)
@@ -64,15 +64,22 @@ class AuthenticationManager:
             roll_number=roll_number,
             semester=semester,
             academic_year=academic_year,
+            actor=actor,
         )
 
     def authenticate(self, username, password, expected_role):
         if not isinstance(username, str) or not isinstance(password, str):
+            if expected_role == "ADMIN":
+                self.database.record_auth_event(None, "FAILED_ADMIN_LOGIN")
             return None
         account = self.database.get_account_by_username(username)
         if not account:
+            if expected_role == "ADMIN":
+                self.database.record_auth_event(None, "FAILED_ADMIN_LOGIN")
             return None
         if account["role"] != expected_role:
+            if expected_role == "ADMIN":
+                self.database.record_auth_event(None, "FAILED_ADMIN_LOGIN")
             return None
         if not verify_password(
             password,
@@ -80,7 +87,11 @@ class AuthenticationManager:
             account["password_hash"],
             account["iterations"],
         ):
+            if expected_role == "ADMIN":
+                self.database.record_auth_event(None, "FAILED_ADMIN_LOGIN")
             return None
+        if expected_role == "ADMIN":
+            self.database.record_auth_event(account, "ADMIN_LOGIN")
         return {
             "account_id": account["account_id"],
             "username": account["username"],
@@ -98,5 +109,8 @@ class AuthenticationManager:
         return self.is_admin(account)
 
     def clear_authenticated_session(self, session_state):
+        account = session_state.get("authenticated_account")
+        if self.is_admin(account):
+            self.database.record_auth_event(account, "ADMIN_LOGOUT")
         session_state.pop("authenticated_account", None)
         session_state.pop("auth_role", None)
