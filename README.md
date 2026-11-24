@@ -118,11 +118,13 @@ confirmed academic-result deletion, validated CSV import, and an admin audit log
 
 ### Accounts and access
 
-On first launch, create an administrator through the setup form (or set
-`ADMIN_USERNAME` and `ADMIN_PASSWORD` in the local environment before first
-launch). Administrators can provision student accounts linked to saved records.
-Student accounts can see their own results and history, but cannot edit results.
-Do not commit account passwords or private configuration files.
+If the selected SQLite database has no administrator account, create the initial
+administrator through the setup form. Use a username of up to 64 characters
+and a password of at least 8 characters. The setup is disabled once an
+administrator exists; existing student accounts and records are preserved.
+Administrators can provision student accounts linked to saved records. Student
+accounts can see their own results and history, but cannot edit results. Do not
+commit account passwords or private configuration files.
 
 ### Bulk CSV import
 

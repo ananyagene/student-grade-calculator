@@ -4,11 +4,23 @@ import secrets
 
 
 PBKDF2_ITERATIONS = 200_000
+MIN_PASSWORD_LENGTH = 8
+MAX_USERNAME_LENGTH = 64
+
+
+def validate_password(password):
+    if not isinstance(password, str) or len(password) < MIN_PASSWORD_LENGTH:
+        raise ValueError("Password must contain at least 8 characters.")
+
+
+def validate_password_confirmation(password, confirmation):
+    if password != confirmation:
+        raise ValueError("Passwords do not match.")
+    validate_password(password)
 
 
 def hash_password(password):
-    if not isinstance(password, str) or len(password) < 8:
-        raise ValueError("Password must contain at least 8 characters.")
+    validate_password(password)
     salt = secrets.token_bytes(16)
     password_hash = hashlib.pbkdf2_hmac(
         "sha256",
@@ -38,8 +50,15 @@ class AuthenticationManager:
     def account_count(self):
         return self.database.account_count()
 
+    def admin_count(self):
+        return self.database.admin_count()
+
     def create_admin(self, username, password):
-        if not isinstance(username, str) or username.strip() == "":
+        if (
+            not isinstance(username, str)
+            or username.strip() == ""
+            or len(username.strip()) > MAX_USERNAME_LENGTH
+        ):
             return False
         salt, password_hash, iterations = hash_password(password)
         return self.database.create_account(

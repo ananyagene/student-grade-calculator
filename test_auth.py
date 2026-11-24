@@ -1,8 +1,14 @@
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from auth import AuthenticationManager, hash_password, verify_password
+from auth import (
+    AuthenticationManager,
+    hash_password,
+    validate_password_confirmation,
+    verify_password,
+)
 from database import StudentDatabase
 
 
@@ -34,6 +40,79 @@ class AuthenticationTests(unittest.TestCase):
         self.assertIsNotNone(account)
         self.assertEqual(account["role"], "ADMIN")
         self.assertIsNone(self.auth.authenticate("unknown", "SecurePassword123", "ADMIN"))
+
+    def test_password_policy_and_confirmation(self):
+        with self.assertRaisesRegex(ValueError, "at least 8 characters"):
+            validate_password_confirmation("short", "short")
+        with self.assertRaisesRegex(ValueError, "do not match"):
+            validate_password_confirmation("SecurePassword123", "DifferentPassword")
+        validate_password_confirmation("SecurePassword123", "SecurePassword123")
+
+    def test_first_admin_can_be_created_when_student_account_exists(self):
+        salt, password_hash, iterations = hash_password("StudentPassword123")
+        self.assertTrue(
+            self.database.create_account(
+                "existing_student",
+                salt,
+                password_hash,
+                iterations,
+                "STUDENT",
+            )
+        )
+        self.assertEqual(self.auth.account_count(), 1)
+        self.assertEqual(self.auth.admin_count(), 0)
+
+        self.assertTrue(self.auth.create_admin("admin", "SecurePassword123"))
+        self.assertEqual(self.auth.admin_count(), 1)
+
+    def test_duplicate_username_prevention_is_case_insensitive(self):
+        self.assertTrue(self.auth.create_admin("admin", "SecurePassword123"))
+        salt, password_hash, iterations = hash_password("StudentPassword123")
+        self.assertFalse(
+            self.database.create_account(
+                "ADMIN",
+                salt,
+                password_hash,
+                iterations,
+                "STUDENT",
+            )
+        )
+
+    def test_admin_username_is_required_and_length_limited(self):
+        self.assertFalse(self.auth.create_admin("   ", "SecurePassword123"))
+        self.assertFalse(self.auth.create_admin("a" * 65, "SecurePassword123"))
+        self.assertEqual(self.auth.admin_count(), 0)
+
+    def test_only_one_admin_can_be_created(self):
+        self.assertTrue(self.auth.create_admin("admin", "SecurePassword123"))
+        self.assertFalse(
+            self.auth.create_admin("second_admin", "AnotherPassword123")
+        )
+        salt, password_hash, iterations = hash_password("AnotherPassword123")
+        self.assertFalse(
+            self.database.create_account(
+                "third_admin",
+                salt,
+                password_hash,
+                iterations,
+                "ADMIN",
+            )
+        )
+        self.assertEqual(self.auth.admin_count(), 1)
+
+    def test_simultaneous_first_admin_creation_is_serialized(self):
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(
+                executor.map(
+                    lambda username: self.auth.create_admin(
+                        username,
+                        "SecurePassword123",
+                    ),
+                    ("admin_one", "admin_two"),
+                )
+            )
+        self.assertEqual(results.count(True), 1)
+        self.assertEqual(self.auth.admin_count(), 1)
 
     def test_admin_incorrect_password(self):
         self.auth.create_admin("admin", "SecurePassword123")
@@ -90,6 +169,8 @@ class AuthenticationTests(unittest.TestCase):
             "StudentPassword123",
             "STUDENT",
         )
+        self.assertIsNotNone(account)
+        self.assertEqual(account["role"], "STUDENT")
         own_result = self.database.get_student_result_for_account(account)
         self.assertIsNotNone(own_result)
         self.assertEqual(own_result["roll_number"], "001")

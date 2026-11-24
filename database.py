@@ -161,6 +161,16 @@ class StudentDatabase:
         finally:
             connection.close()
 
+    def admin_count(self):
+        connection = self.connect()
+        try:
+            row = connection.execute(
+                "SELECT COUNT(*) AS admin_count FROM accounts WHERE role = 'ADMIN'"
+            ).fetchone()
+            return int(row["admin_count"])
+        finally:
+            connection.close()
+
     def create_account(
         self,
         username,
@@ -173,7 +183,10 @@ class StudentDatabase:
         connection = self.connect()
         timestamp = self._now()
         try:
-            connection.execute("BEGIN")
+            connection.execute("BEGIN IMMEDIATE" if role == "ADMIN" else "BEGIN")
+            if role == "ADMIN" and self._admin_count_in_transaction(connection) > 0:
+                connection.rollback()
+                return False
             connection.execute(
                 """
                 INSERT INTO accounts (
@@ -199,6 +212,12 @@ class StudentDatabase:
             return False
         finally:
             connection.close()
+
+    def _admin_count_in_transaction(self, connection):
+        row = connection.execute(
+            "SELECT COUNT(*) AS admin_count FROM accounts WHERE role = 'ADMIN'"
+        ).fetchone()
+        return int(row["admin_count"])
 
     def get_account_by_username(self, username):
         connection = self.connect()

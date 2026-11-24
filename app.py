@@ -6,7 +6,11 @@ from pathlib import Path
 import streamlit as st
 from report_card import generate_report_card_pdf
 from database import StudentDatabase
-from auth import AuthenticationManager, PBKDF2_ITERATIONS
+from auth import (
+    MAX_USERNAME_LENGTH,
+    AuthenticationManager,
+    validate_password_confirmation,
+)
 from csv_import import parse_student_csv, csv_template, result_csv, safe_csv_cell
 
 from calculations import (
@@ -53,50 +57,75 @@ st.set_page_config(
     layout="wide",
 )
 
+st.markdown(
+    """
+    <style>
+    .stApp { background-color: #F8FAFC; }
+    h1, h2, h3 { color: #203864; }
+    .stMetric { background: #FFFFFF; border: 1px solid #E2E8F0;
+                border-radius: 12px; padding: 14px; }
+    [data-testid="stTable"] { border: 1px solid #E2E8F0; border-radius: 10px; }
+    [data-testid="stAlert"] { border-radius: 10px; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 if st.session_state["authenticated_account"] is None:
     st.title("Student Grade Calculator", icon=":material/school:")
     st.caption("Secure account access")
 
-    if authentication_manager.account_count() == 0:
-        env_username = os.getenv("ADMIN_USERNAME", "").strip()
-        env_password = os.getenv("ADMIN_PASSWORD", "")
-
-        if env_username and env_password:
-            try:
-                created = authentication_manager.create_admin(env_username, env_password)
-                if created:
-                    st.success("First-run administrator account created from environment setup.")
-                    st.rerun()
-            except ValueError as error:
-                st.error(str(error))
-
-        st.subheader("First-run administrator setup")
-        st.caption("This setup appears only until the first administrator account exists.")
-        with st.form("first_admin_setup"):
-            setup_username = st.text_input("Administrator username")
-            setup_password = st.text_input("Administrator password", type="password")
-            confirm_password = st.text_input("Confirm password", type="password")
-            submitted = st.form_submit_button("Create administrator")
+    if authentication_manager.admin_count() == 0:
+        st.subheader("Create Admin Account", icon=":material/admin_panel_settings:")
+        st.caption("Create the initial administrator account to get started.")
+        with st.container(border=True):
+            with st.form("first_admin_setup"):
+                setup_username = st.text_input(
+                    "Username",
+                    max_chars=MAX_USERNAME_LENGTH,
+                )
+                setup_password = st.text_input(
+                    "Password",
+                    type="password",
+                    help="Use at least 8 characters.",
+                )
+                confirm_password = st.text_input(
+                    "Confirm Password",
+                    type="password",
+                )
+                submitted = st.form_submit_button(
+                    "Create Account",
+                    type="primary",
+                    icon=":material/person_add:",
+                )
 
         if submitted:
-            if setup_password != confirm_password:
-                st.error("Passwords do not match.")
-            elif len(setup_password) < 8:
-                st.error("Password must contain at least 8 characters.")
+            if not setup_username.strip():
+                st.error("Enter a username.")
             else:
                 try:
+                    validate_password_confirmation(
+                        setup_password,
+                        confirm_password,
+                    )
+                except ValueError as error:
+                    st.error(str(error))
+                else:
                     created = authentication_manager.create_admin(
                         setup_username,
                         setup_password,
                     )
                     if created:
-                        st.success("Administrator account created. Please sign in.")
+                        st.session_state["admin_account_created"] = True
+                        st.rerun()
+                    elif authentication_manager.admin_count() > 0:
                         st.rerun()
                     else:
-                        st.error("Could not create the administrator account.")
-                except ValueError as error:
-                    st.error(str(error))
+                        st.error("That username is already in use.")
         st.stop()
+
+    if st.session_state.pop("admin_account_created", False):
+        st.success("Administrator account created. Please sign in.")
 
     st.subheader("Sign in")
     login_role = st.selectbox("Account type", ["ADMIN", "STUDENT"])
@@ -115,20 +144,6 @@ if st.session_state["authenticated_account"] is None:
         else:
             st.error("Sign-in failed. Check your account type, username, and password.")
     st.stop()
-
-st.markdown(
-    """
-    <style>
-    .stApp { background-color: #F8FAFC; }
-    h1, h2, h3 { color: #203864; }
-    .stMetric { background: #FFFFFF; border: 1px solid #E2E8F0;
-                border-radius: 12px; padding: 14px; }
-    [data-testid="stTable"] { border: 1px solid #E2E8F0; border-radius: 10px; }
-    [data-testid="stAlert"] { border-radius: 10px; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
 
 authenticated_account = st.session_state["authenticated_account"]
 

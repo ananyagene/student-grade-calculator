@@ -1,9 +1,12 @@
 import tempfile
 import unittest
 from pathlib import Path
+import shutil
 
+from auth import AuthenticationManager
 from database import StudentDatabase, SyntheticSeedConflict
 from seed_demo_data import build_synthetic_results
+from setup_demo import setup_demo
 
 
 class SyntheticSeedTests(unittest.TestCase):
@@ -72,3 +75,50 @@ class SyntheticSeedTests(unittest.TestCase):
         for student in active:
             self.assertIn("is_synthetic", student)
             self.assertTrue(student["is_synthetic"])
+
+    def test_setup_demo_accounts_can_log_in(self):
+        demo_path = Path(self.temp_directory.name) / "generated_demo.sqlite3"
+        credentials = setup_demo(demo_path)
+        database = StudentDatabase(demo_path)
+        database.initialize()
+        auth = AuthenticationManager(database)
+
+        self.assertEqual(database.admin_count(), 1)
+        self.assertEqual(database.account_count(), 6)
+        for username, password, role in credentials:
+            account = auth.authenticate(username, password, role)
+            self.assertIsNotNone(account)
+            self.assertEqual(account["role"], role)
+
+    def test_existing_demo_database_is_preserved_by_initialization(self):
+        source = Path(__file__).with_name("demo.sqlite3")
+        demo_copy = Path(self.temp_directory.name) / "existing_demo.sqlite3"
+        shutil.copy2(source, demo_copy)
+        database = StudentDatabase(demo_copy)
+
+        def snapshot():
+            connection = database.connect()
+            try:
+                accounts = connection.execute(
+                    """
+                    SELECT username, role, password_salt, password_hash,
+                           iterations, student_id, is_active
+                    FROM accounts ORDER BY username
+                    """
+                ).fetchall()
+                counts = tuple(
+                    connection.execute(
+                        "SELECT COUNT(*) FROM " + table
+                    ).fetchone()[0]
+                    for table in ("students", "active_results", "accounts")
+                )
+                return [tuple(row) for row in accounts], counts
+            finally:
+                connection.close()
+
+        before = snapshot()
+        database.initialize()
+        after = snapshot()
+
+        self.assertEqual(database.admin_count(), 1)
+        self.assertEqual(before, after)
