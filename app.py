@@ -777,6 +777,17 @@ if st.session_state["history_message"]:
     else:
         st.warning(st.session_state["history_message"])
 
+st.subheader("Admin Dashboard", icon=":material/dashboard:")
+if active_students:
+    st.caption(f"Managing {len(active_students)} active academic results")
+    st.markdown("**Recently Updated Results**")
+    recent_results = sorted(
+        active_students, key=lambda r: r.get("updated_at", ""), reverse=True
+    )[:5]
+    st.dataframe(get_saved_student_table(recent_results), hide_index=True)
+else:
+    st.info("No saved results yet. Create or import academic records to populate the dashboard.")
+
 st.subheader("Saved Student Results", icon=":material/groups:")
 
 if authentication_manager.is_admin(authenticated_account):
