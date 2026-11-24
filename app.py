@@ -856,7 +856,27 @@ if st.session_state["last_calculated_result"] is not None:
         else:
             st.warning(st.session_state["save_message"])
 
-saved_table = get_saved_student_table(active_students)
+# Filters are applied to reporting views, never to database writes.
+st.subheader("Academic Filters", icon=":material/filter_alt:")
+filter_semester_col, filter_year_col = st.columns(2)
+with filter_semester_col:
+    selected_semester = st.selectbox(
+        "Filter by Semester", ["All"] + [f"Semester {n}" for n in range(1, 9)],
+        key="admin_semester_filter",
+    )
+with filter_year_col:
+    available_years = sorted({str(s["academic_year"]) for s in active_students})
+    selected_year = st.selectbox(
+        "Filter by Academic Year", ["All"] + available_years,
+        key="admin_year_filter",
+    )
+filtered_students = [
+    student for student in active_students
+    if (selected_semester == "All" or str(student["semester"]) == selected_semester)
+    and (selected_year == "All" or str(student["academic_year"]) == selected_year)
+]
+
+saved_table = get_saved_student_table(filtered_students)
 if saved_table:
     st.table(saved_table)
 else:
@@ -865,11 +885,11 @@ else:
 st.subheader("Search Student", icon=":material/search:")
 search_query = st.text_input("Search by Name or Roll Number")
 
-if not active_students:
-    st.info("No student results saved yet.")
+if not filtered_students:
+    st.info("No student results match the selected filters.")
 else:
     search_results = search_saved_students(
-        active_students,
+        filtered_students,
         search_query,
     )
     if search_results:
@@ -878,14 +898,14 @@ else:
         st.warning("No matching students found.")
 
 st.subheader("Class Leaderboard", icon=":material/emoji_events:")
-leaderboard = get_class_leaderboard(active_students)
+leaderboard = get_class_leaderboard(filtered_students)
 if leaderboard:
     st.table(leaderboard)
 else:
     st.info("Save at least one student result to create the class leaderboard.")
 
 st.subheader("Class Analytics", icon=":material/analytics:")
-class_analytics = get_class_analytics(active_students)
+class_analytics = get_class_analytics(filtered_students)
 
 metric_row_one = st.columns(4)
 metric_row_one[0].metric("Total Students", class_analytics["total_students"], border=True)
@@ -915,8 +935,8 @@ metric_row_two[2].metric(
 )
 
 st.subheader("Grade Distribution", icon=":material/bar_chart:")
-grade_distribution = get_grade_distribution(active_students)
-if active_students:
+grade_distribution = get_grade_distribution(filtered_students)
+if filtered_students:
     chart_data = {
         row["Grade"]: row["Student Count"]
         for row in grade_distribution
