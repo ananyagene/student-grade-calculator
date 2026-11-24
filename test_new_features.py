@@ -52,3 +52,40 @@ class NewFeaturesTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+class FinalRegressionTests(unittest.TestCase):
+    setUp = NewFeaturesTests.setUp
+    tearDown = NewFeaturesTests.tearDown
+    def test_identity_change_preserves_history(self):
+        original = build_synthetic_results()[0]
+        self.assertTrue(self.db.save_active_result_for_account(self.admin, original))
+        key = tuple(original[k] for k in ('roll_number', 'semester', 'academic_year'))
+        edited = dict(original, roll_number='EDIT101')
+        self.assertTrue(self.db.update_active_result_for_account(self.admin, edited, key))
+        history = self.db.get_result_history('EDIT101', original['semester'], original['academic_year'])
+        self.assertEqual(history[0]['roll_number'], original['roll_number'])
+        self.assertEqual(self.db.get_result_history(*key), [])
+
+    def test_duplicate_identity_rolls_back(self):
+        first, second = build_synthetic_results()[:2]
+        for result in (first, second):
+            self.assertTrue(self.db.save_active_result_for_account(self.admin, result))
+        key = tuple(first[k] for k in ('roll_number', 'semester', 'academic_year'))
+        self.assertFalse(self.db.update_active_result_for_account(self.admin, dict(first, roll_number=second['roll_number']), key))
+        self.assertEqual(self.db.get_result_history(*key), [])
+
+    def test_auth_audit(self):
+        from auth import AuthenticationManager
+        manager = AuthenticationManager(self.db)
+        self.assertTrue(manager.create_admin('localadmin', 'test-only-password'))
+        self.assertIsNone(manager.authenticate('localadmin', 'wrong', 'ADMIN'))
+        account = manager.authenticate('localadmin', 'test-only-password', 'ADMIN')
+        manager.clear_authenticated_session({'authenticated_account': account})
+        events = self.db.get_audit_logs_for_account(account)
+        self.assertEqual([e['action'] for e in events], ['ADMIN_LOGOUT', 'ADMIN_LOGIN', 'FAILED_ADMIN_LOGIN'])
+        self.assertNotIn('test-only-password', str(events))
+
+    def test_csv_formula_protection(self):
+        from csv_import import result_csv
+        result = dict(build_synthetic_results()[0], student_name='=1+1')
+        self.assertIn("'=1+1", result_csv(result))
