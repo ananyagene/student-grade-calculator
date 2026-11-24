@@ -1,13 +1,25 @@
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Virtual environment
+.venv/
 venv/
 env/
+ENV/
 
 # Streamlit
 .streamlit/
+
+# Local credentials and environment files
+.env
+.env.*
+*.secret
+*.credentials
+credentials*.txt
 
 # IDE
 .vscode/
@@ -15,5 +27,20 @@ env/
 
 # Local SQLite database
 *.db
+*.db3
 *.sqlite
 *.sqlite3
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3-journal
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
