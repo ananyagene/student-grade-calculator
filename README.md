@@ -181,3 +181,9 @@ a student's roll number, semester or academic year is not yet supported.
 
 The `.gitignore` excludes SQLite databases, bytecode, and local environment
 folders. Never upload real student data or passwords to a public repository.
+
+### Final verification notes
+
+Administrators can correct student identity fields from the selected result's history section. Prior versions remain linked by the stable student ID. Audit events now include administrator sign-in, failed administrator sign-in, explicit sign-out, student account provisioning and imported results. Audit search and UTC date filtering operate on the latest 200 matching events. Student accounts can download their own CSV result.
+
+Automated verification: `python -m unittest discover -v` (96 tests passed in the development environment), and `python -m compileall -q .`. Streamlit browser interaction remains a manual release check because Streamlit was unavailable in that environment. Verify both roles, editing, deletion, import, filters and downloads against a separate demo database before release.
