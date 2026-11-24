@@ -882,6 +882,33 @@ if saved_table:
 else:
     st.caption("No student results saved yet.")
 
+st.subheader("Delete Academic Result", icon=":material/delete:")
+if active_students:
+    delete_labels = [
+        f"{r['student_name']} | {r['roll_number']} | {r['semester']} | {r['academic_year']}"
+        for r in active_students
+    ]
+    with st.form("delete_result_form"):
+        delete_selection = st.selectbox("Select academic record", range(len(delete_labels)),
+                                        format_func=lambda i: delete_labels[i])
+        confirm_delete = st.checkbox("I confirm that this academic result should be deleted")
+        delete_submitted = st.form_submit_button("Delete selected result")
+    if delete_submitted:
+        if not confirm_delete:
+            st.warning("Confirm deletion before continuing.")
+        else:
+            selected_record = active_students[delete_selection]
+            if student_database.delete_result_for_account(
+                authenticated_account, selected_record["roll_number"],
+                selected_record["semester"], selected_record["academic_year"]
+            ):
+                st.success("Academic result deleted.")
+                st.rerun()
+            else:
+                st.error("Could not delete this result.")
+else:
+    st.caption("No academic results to delete.")
+
 st.subheader("Search Student", icon=":material/search:")
 search_query = st.text_input("Search by Name or Roll Number")
 

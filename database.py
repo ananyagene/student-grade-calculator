@@ -674,6 +674,38 @@ class StudentDatabase:
         finally:
             connection.close()
 
+    def delete_result_for_account(self, account, roll_number, semester, academic_year):
+        """Delete one academic result; preserve student accounts and reject unauthorized calls."""
+        if not account or account.get("role") != "ADMIN":
+            return False
+        connection = self.connect()
+        try:
+            connection.execute("BEGIN")
+            student = connection.execute(
+                "SELECT student_id FROM students WHERE roll_number = ? "
+                "AND semester = ? AND academic_year = ?",
+                (roll_number, semester, academic_year),
+            ).fetchone()
+            if student is None:
+                connection.rollback()
+                return False
+            student_id = student["student_id"]
+            # Remove academic data, but keep the identity if a login account references it.
+            connection.execute("DELETE FROM active_results WHERE student_id = ?", (student_id,))
+            connection.execute("DELETE FROM result_history WHERE student_id = ?", (student_id,))
+            account_exists = connection.execute(
+                "SELECT 1 FROM accounts WHERE student_id = ?", (student_id,)
+            ).fetchone()
+            if not account_exists:
+                connection.execute("DELETE FROM students WHERE student_id = ?", (student_id,))
+            connection.commit()
+            return True
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
     def get_result_history(self, roll_number, semester, academic_year):
         connection = self.connect()
         try:
