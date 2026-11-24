@@ -1,5 +1,5 @@
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -238,7 +238,7 @@ class StudentDatabase:
         connection.execute(
             "INSERT INTO audit_logs (timestamp, actor_id, actor_username, "
             "action, target_reference, description) VALUES (?, ?, ?, ?, ?, ?)",
-            (datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            (datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
              account.get("account_id"), account.get("username", "unknown"),
              action, reference, description),
         )
@@ -736,12 +736,8 @@ class StudentDatabase:
             student_id = student["student_id"]
             # Remove academic data, but keep the identity if a login account references it.
             connection.execute("DELETE FROM active_results WHERE student_id = ?", (student_id,))
-            connection.execute("DELETE FROM result_history WHERE student_id = ?", (student_id,))
-            account_exists = connection.execute(
-                "SELECT 1 FROM accounts WHERE student_id = ?", (student_id,)
-            ).fetchone()
-            if not account_exists:
-                connection.execute("DELETE FROM students WHERE student_id = ?", (student_id,))
+            # Keep the student identity and prior result versions for historical
+            # accountability. A deleted result is excluded from active analytics.
             self._record_audit(connection, account, "DELETE_RESULT", roll_number,
                                "Deleted academic result for " + semester + " / " + academic_year)
             connection.commit()
