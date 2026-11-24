@@ -3,6 +3,10 @@ from datetime import datetime
 from pathlib import Path
 
 
+class SyntheticSeedConflict(Exception):
+    pass
+
+
 class StudentDatabase:
     def __init__(self, database_path):
         self.database_path = str(database_path)
@@ -24,6 +28,7 @@ class StudentDatabase:
                     roll_number TEXT NOT NULL,
                     semester TEXT NOT NULL,
                     academic_year TEXT NOT NULL,
+                    is_synthetic INTEGER NOT NULL DEFAULT 0,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL,
                     UNIQUE (roll_number, semester, academic_year)
@@ -118,6 +123,15 @@ class StudentDatabase:
                     ON result_history(student_id, version);
                 """
             )
+            student_columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(students)")
+            }
+            if "is_synthetic" not in student_columns:
+                connection.execute(
+                    "ALTER TABLE students "
+                    "ADD COLUMN is_synthetic INTEGER NOT NULL DEFAULT 0"
+                )
             connection.commit()
         finally:
             connection.close()
@@ -228,7 +242,7 @@ class StudentDatabase:
                 """
                 SELECT
                     s.student_id, s.student_name, s.roll_number,
-                    s.semester, s.academic_year,
+                    s.semester, s.academic_year, s.is_synthetic,
                     ar.result_id, ar.subject_count, ar.total_marks,
                     ar.percentage, ar.average_marks, ar.overall_grade,
                     ar.overall_result, ar.performance_category, ar.remarks,
@@ -343,14 +357,15 @@ class StudentDatabase:
                 """
                 INSERT INTO students (
                     student_name, roll_number, semester, academic_year,
-                    created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    is_synthetic, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     result["student_name"].strip(),
                     result["roll_number"].strip().upper(),
                     result["semester"].strip(),
                     result["academic_year"].strip(),
+                    int(result.get("is_synthetic", 0)),
                     timestamp,
                     timestamp,
                 ),
@@ -450,7 +465,7 @@ class StudentDatabase:
                 """
                 SELECT
                     s.student_id, s.student_name, s.roll_number,
-                    s.semester, s.academic_year,
+                    s.semester, s.academic_year, s.is_synthetic,
                     ar.result_id, ar.subject_count, ar.total_marks,
                     ar.percentage, ar.average_marks, ar.overall_grade,
                     ar.overall_result, ar.performance_category, ar.remarks,
@@ -477,6 +492,7 @@ class StudentDatabase:
                     "roll_number": row["roll_number"],
                     "semester": row["semester"],
                     "academic_year": row["academic_year"],
+                    "is_synthetic": bool(row["is_synthetic"]),
                     "subject_count": row["subject_count"],
                     "subject_names": [
                         subject["subject_name"] for subject in subject_rows
@@ -695,6 +711,111 @@ class StudentDatabase:
                     "remarks": row["remarks"],
                 })
             return history
+        finally:
+            connection.close()
+
+    def seed_synthetic_results(self, results):
+        inserted = 0
+        skipped = 0
+        timestamp = self._now()
+        connection = self.connect()
+        try:
+            connection.execute("BEGIN")
+            for result in results:
+                if not self._validate_result(result):
+                    raise SyntheticSeedConflict(
+                        "Synthetic student data contains invalid subjects or marks."
+                    )
+
+                roll_number = result["roll_number"].strip().upper()
+                semester = result["semester"].strip()
+                academic_year = result["academic_year"].strip()
+                existing = connection.execute(
+                    """
+                    SELECT student_id, student_name, is_synthetic
+                    FROM students
+                    WHERE roll_number = ? AND semester = ? AND academic_year = ?
+                    """,
+                    (roll_number, semester, academic_year),
+                ).fetchone()
+                if existing:
+                    if not existing["is_synthetic"]:
+                        raise SyntheticSeedConflict(
+                            f"Roll Number {roll_number} already belongs to "
+                            "a non-synthetic student record."
+                        )
+                    skipped += 1
+                    continue
+
+                cursor = connection.execute(
+                    """
+                    INSERT INTO students (
+                        student_name, roll_number, semester, academic_year,
+                        is_synthetic, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, 1, ?, ?)
+                    """,
+                    (
+                        result["student_name"].strip(),
+                        roll_number,
+                        semester,
+                        academic_year,
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+                student_id = cursor.lastrowid
+                cursor = connection.execute(
+                    """
+                    INSERT INTO active_results (
+                        student_id, subject_count, total_marks, percentage,
+                        average_marks, overall_grade, overall_result,
+                        performance_category, remarks, version, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                    """,
+                    (
+                        student_id,
+                        int(result["subject_count"]),
+                        int(result["total_marks"]),
+                        float(result["percentage"]),
+                        float(result["average_marks"]),
+                        result["overall_grade"],
+                        result["overall_result"],
+                        result["performance_category"],
+                        result["remarks"],
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+                result_id = cursor.lastrowid
+                for position, (subject_name, marks) in enumerate(
+                    zip(result["subject_names"], result["subject_marks"]),
+                    start=1,
+                ):
+                    marks = int(marks)
+                    connection.execute(
+                        """
+                        INSERT INTO active_subjects (
+                            result_id, position, subject_name, marks, grade, status
+                        ) VALUES (?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            result_id,
+                            position,
+                            subject_name.strip(),
+                            marks,
+                            self._grade_for_percentage(marks),
+                            "Pass" if marks >= 40 else "Fail",
+                        ),
+                    )
+                inserted += 1
+            connection.commit()
+            return {"inserted": inserted, "skipped": skipped}
+        except SyntheticSeedConflict:
+            connection.rollback()
+            raise
+        except Exception:
+            connection.rollback()
+            raise
         finally:
             connection.close()
 
