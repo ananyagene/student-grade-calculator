@@ -108,3 +108,76 @@ edge cases such as all-zero and all-100 marks.
 ## Author
 
 Developed as an MCA Artificial Intelligence academic project.
+
+## Advanced SRMS Features (feature-advanced branch)
+
+The application also includes SQLite persistence, role-based admin/student login,
+subject counts from 3 to 10, versioned result history, student-specific report
+cards, an admin dashboard, academic filters, grade distribution, a leaderboard,
+confirmed academic-result deletion, validated CSV import, and an admin audit log.
+
+### Accounts and access
+
+On first launch, create an administrator through the setup form (or set
+`ADMIN_USERNAME` and `ADMIN_PASSWORD` in the local environment before first
+launch). Administrators can provision student accounts linked to saved records.
+Student accounts can see their own results and history, but cannot edit results.
+Do not commit account passwords or private configuration files.
+
+### Bulk CSV import
+
+An administrator can download a template, upload a UTF-8 CSV, review valid
+rows and validation errors, and confirm the import. Required columns:
+`student_name`, `roll_number`, `semester`, `academic_year`, followed by 3–10
+consecutive `subject_N`, `marks_N` pairs. Marks must be whole numbers from 0
+to 100. The importer limits files to 2 MB and 500 data rows. Existing results
+are skipped, not overwritten. Imports are processed per valid record, not as
+an all-or-nothing batch transaction.
+
+### Result deletion and audit
+
+Administrators can delete an active academic result after confirming the action.
+The associated student identity and prior result-history versions are retained;
+the deleted result is excluded from active analytics. Audit events are recorded
+transactionally for administrator-initiated creation, update, and deletion.
+The Audit Log page is visible to admins only. Login/logout and account
+provisioning are **not yet covered** by audit events.
+
+### Local isolated demo database
+
+To create a **new** local demo SQLite database with five synthetic student
+records and six accounts (one admin, five students):
+
+```bash
+python setup_demo.py --database demo_results.sqlite3
+```
+
+The command prints newly generated passwords **once** in your terminal. Keep
+them private. To run the app against the demo database, set the environment
+variable `SRMS_DATABASE_PATH` to the **absolute path** of `demo_results.sqlite3`
+before running `streamlit run app.py`. For PowerShell:
+
+```powershell
+$env:SRMS_DATABASE_PATH = (Resolve-Path .\demo_results.sqlite3).Path
+streamlit run app.py
+```
+
+The demo setup intentionally refuses to overwrite an existing database. The
+original `seed_demo_data.py` remains available for idempotent synthetic-data
+seeding in an existing database; it does not provision accounts.
+
+### Testing and current limitations
+
+```bash
+python -m unittest -v
+python -m py_compile app.py database.py auth.py calculations.py csv_import.py setup_demo.py
+```
+
+The automated suite checks calculations, SQLite operations, authentication,
+seeding, audit authorization, deletion, and CSV parsing. Browser-based UI
+verification and deployment/security review are still required. The interface
+supports editing existing marks through its Result History workflow; changing
+a student's roll number, semester or academic year is not yet supported.
+
+The `.gitignore` excludes SQLite databases, bytecode, and local environment
+folders. Never upload real student data or passwords to a public repository.
