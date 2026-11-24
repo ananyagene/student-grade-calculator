@@ -7,6 +7,7 @@ import streamlit as st
 from report_card import generate_report_card_pdf
 from database import StudentDatabase
 from auth import AuthenticationManager, PBKDF2_ITERATIONS
+from csv_import import parse_student_csv, csv_template
 
 from calculations import (
     are_subject_marks_valid,
@@ -908,6 +909,35 @@ if active_students:
                 st.error("Could not delete this result.")
 else:
     st.caption("No academic results to delete.")
+
+st.subheader("Bulk CSV Import", icon=":material/upload_file:")
+st.download_button("Download CSV Template", csv_template(), "student_import_template.csv", "text/csv")
+uploaded_csv = st.file_uploader("Upload student results CSV", type=["csv"], key="bulk_student_csv")
+if uploaded_csv is not None:
+    try:
+        parsed_rows, csv_errors = parse_student_csv(uploaded_csv.getvalue())
+        st.caption(f"{len(parsed_rows)} valid rows; {len(csv_errors)} rows with errors")
+        if csv_errors:
+            st.dataframe(csv_errors, hide_index=True)
+        if parsed_rows:
+            st.dataframe(get_saved_student_table(parsed_rows), hide_index=True)
+            with st.form("confirm_csv_import"):
+                confirmed_csv = st.checkbox("I confirm importing the valid rows shown above")
+                submit_csv = st.form_submit_button("Import valid students")
+            if submit_csv:
+                if not confirmed_csv:
+                    st.warning("Confirm the import first.")
+                else:
+                    imported_count, skipped_count = 0, 0
+                    for record in parsed_rows:
+                        if student_database.save_active_result_for_account(authenticated_account, record):
+                            imported_count += 1
+                        else:
+                            skipped_count += 1
+                    st.success(f"Imported {imported_count}; skipped {skipped_count} duplicates.")
+                    st.rerun()
+    except ValueError as csv_error:
+        st.error(str(csv_error))
 
 st.subheader("Search Student", icon=":material/search:")
 search_query = st.text_input("Search by Name or Roll Number")
