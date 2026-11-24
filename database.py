@@ -264,10 +264,10 @@ class StudentDatabase:
             return False
         return self.save_active_result(result, actor=account)
 
-    def update_active_result_for_account(self, account, result):
+    def update_active_result_for_account(self, account, result, original_identity=None):
         if not account or account["role"] != "ADMIN":
             return False
-        return self.update_active_result(result, actor=account)
+        return self.update_active_result(result, actor=account, original_identity=original_identity)
 
     def get_student_result_for_account(self, account):
         if not account or account["role"] != "STUDENT":
@@ -556,7 +556,7 @@ class StudentDatabase:
         finally:
             connection.close()
 
-    def update_active_result(self, new_result, actor=None):
+    def update_active_result(self, new_result, actor=None, original_identity=None):
         if not self._validate_result(new_result):
             raise ValueError("Invalid active result data")
         timestamp = self._now()
@@ -570,9 +570,7 @@ class StudentDatabase:
                 WHERE roll_number = ? AND semester = ? AND academic_year = ?
                 """,
                 (
-                    new_result["roll_number"].strip().upper(),
-                    new_result["semester"].strip(),
-                    new_result["academic_year"].strip(),
+                    *(original_identity or (new_result["roll_number"].strip().upper(), new_result["semester"].strip(), new_result["academic_year"].strip())),
                 ),
             ).fetchone()
             if not student:
@@ -592,6 +590,9 @@ class StudentDatabase:
                 (student_id,),
             ).fetchone()
 
+            if not active:
+                connection.rollback()
+                return False
             subject_rows = connection.execute(
                 """
                 SELECT position, subject_name, marks, grade, status
@@ -652,11 +653,14 @@ class StudentDatabase:
             connection.execute(
                 """
                 UPDATE students
-                SET student_name = ?, updated_at = ?
+                SET student_name = ?, roll_number = ?, semester = ?, academic_year = ?, updated_at = ?
                 WHERE student_id = ?
                 """,
                 (
                     new_result["student_name"].strip(),
+                    new_result["roll_number"].strip().upper(),
+                    new_result["semester"].strip(),
+                    new_result["academic_year"].strip(),
                     timestamp,
                     student_id,
                 ),
@@ -712,6 +716,9 @@ class StudentDatabase:
                                    new_result["roll_number"], "Updated academic result")
             connection.commit()
             return True
+        except sqlite3.IntegrityError:
+            connection.rollback()
+            return False
         except Exception:
             connection.rollback()
             raise
@@ -735,7 +742,10 @@ class StudentDatabase:
                 return False
             student_id = student["student_id"]
             # Remove academic data, but keep the identity if a login account references it.
-            connection.execute("DELETE FROM active_results WHERE student_id = ?", (student_id,))
+            deleted = connection.execute("DELETE FROM active_results WHERE student_id = ?", (student_id,))
+            if not deleted.rowcount:
+                connection.rollback()
+                return False
             # Keep the student identity and prior result versions for historical
             # accountability. A deleted result is excluded from active analytics.
             self._record_audit(connection, account, "DELETE_RESULT", roll_number,
@@ -760,7 +770,8 @@ class StudentDatabase:
                     rh.percentage, rh.average_marks, rh.overall_grade,
                     rh.overall_result, rh.performance_category, rh.remarks
                 FROM result_history rh
-                WHERE rh.roll_number = ? AND rh.semester = ? AND rh.academic_year = ?
+                JOIN students s ON s.student_id = rh.student_id
+                WHERE s.roll_number = ? AND s.semester = ? AND s.academic_year = ?
                 ORDER BY rh.version
                 """,
                 (roll_number.strip().upper(), semester.strip(), academic_year.strip()),

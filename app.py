@@ -702,6 +702,27 @@ if active_students:
     selected_index = history_options.index(selected_history)
     selected_student = active_students[selected_index]
 
+    with st.form("edit_identity_" + str(selected_index)):
+        edited_name = st.text_input("Edit student name", selected_student["student_name"])
+        edited_roll = st.text_input("Edit roll number", selected_student["roll_number"])
+        semesters = [f"Semester {n}" for n in range(1, 9)]
+        if selected_student["semester"] not in semesters:
+            semesters.append(selected_student["semester"])
+        edited_semester = st.selectbox("Edit semester", semesters, index=semesters.index(selected_student["semester"]))
+        edited_year = st.text_input("Edit academic year", selected_student["academic_year"])
+        edit_submit = st.form_submit_button("Save student identity")
+    if edit_submit:
+        import re
+        if not edited_name.strip() or not edited_roll.strip() or not re.fullmatch(r"\d{4}-\d{4}", edited_year) or int(edited_year[5:]) != int(edited_year[:4]) + 1:
+            st.error("Enter a name, roll number and consecutive academic years (YYYY-YYYY).")
+        else:
+            edited = dict(selected_student, student_name=edited_name, roll_number=edited_roll, semester=edited_semester, academic_year=edited_year)
+            if student_database.update_active_result_for_account(authenticated_account, edited, (selected_student["roll_number"], selected_student["semester"], selected_student["academic_year"])):
+                st.session_state["history_message"] = "Student identity updated."
+                st.rerun()
+            else:
+                st.error("Update failed: duplicate identity or missing record.")
+
     st.write("**Latest Active Result**")
     st.write(
         selected_student["student_name"],
