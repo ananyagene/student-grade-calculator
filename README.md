@@ -1,14 +1,18 @@
-# Student Grade Calculator
+# Student Result Management System
 
-A simple Student Grade Calculator built with Python and Streamlit. This project calculates total marks, percentage, grade, pass/fail status, and remarks for a student based on five subject marks.
+A Student Result Management System built with Python, Streamlit, and SQLite.
+It calculates and stores academic results, supports Admin and Student accounts,
+and provides dashboards and reporting workflows.
 
 This project is developed as an academic project to practice **Git and GitHub** concepts through incremental, version-based development.
 
 ## Features
 
-- Student name input
-- Five subject marks inputs (0 to 100 each)
-- Total marks calculation (out of 500)
+- Student and Admin authentication with role-based access
+- Initial Admin setup for a database that has no Admin account
+- Student name and identity management
+- Dynamic selection of 3 to 10 subjects, with marks from 0 to 100
+- Total marks calculation (up to 1,000, depending on selected subjects)
 - Percentage calculation
 - Grade calculation (A to F)
 - Pass/Fail result
@@ -19,7 +23,7 @@ This project is developed as an academic project to practice **Git and GitHub** 
 - Average marks rounded to 2 decimal places
 - Result Summary with the number of passed and failed subjects
 - Performance Category based on the overall percentage
-- Subject Performance bar chart for all five subjects
+- Subject Performance bar chart for selected subjects
 - Strongest and weakest subject insights, including tied subjects
 - Subject-wise Pass/Fail status for each subject
 - Subject improvement suggestions for each subject
@@ -28,8 +32,11 @@ This project is developed as an academic project to practice **Git and GitHub** 
 - Improved result presentation using Streamlit metrics and tables
 - Improved input validation for names and subject marks
 - Clear application error handling for invalid input
-- Final application polish and edge-case testing
-- Automated calculation tests using Python's built-in unittest module
+- SQLite persistence and versioned result history
+- Admin and Student dashboards, search, filters, analytics, and leaderboard
+- PDF report cards and CSV import/export
+- Confirmed result deletion and Admin audit log
+- Automated tests using Python's built-in unittest module and Streamlit AppTest
 
 ## Grading System
 
@@ -46,6 +53,9 @@ This project is developed as an academic project to practice **Git and GitHub** 
 
 - **Python** — Application logic
 - **Streamlit** — Frontend and user interface
+- **SQLite** — Persistent student, result, account, and audit data
+- **ReportLab** — PDF report card generation
+- **unittest** — Automated tests
 - **Git** — Version control
 - **GitHub** — Remote repository
 
@@ -53,26 +63,40 @@ This project is developed as an academic project to practice **Git and GitHub** 
 
 ```
 student-grade-calculator/
-├── app.py               # Main application file
-├── calculations.py      # Calculation and validation helpers
-├── test_calculations.py # Automated unittest cases
-├── requirements.txt     # Python dependencies
-├── README.md            # Project documentation
-└── .gitignore           # Files ignored by Git
+├── app.py                  # Streamlit application and dashboards
+├── auth.py                 # Password hashing, login, and permissions
+├── database.py             # SQLite persistence and authorization
+├── calculations.py         # Result calculations and analytics
+├── csv_import.py           # CSV parsing and export helpers
+├── report_card.py          # PDF report card generation
+├── seed_demo_data.py       # Synthetic result data
+├── setup_demo.py           # Creates a new isolated demo database
+├── test_*.py               # Automated unit and UI regression tests
+├── requirements.txt        # Python dependencies
+├── README.md               # Project and release documentation
+└── .gitignore              # Local data, secrets, and generated files
 ```
 
 ## Installation
 
-1. Create and activate a virtual environment:
+From the project directory, create and activate a virtual environment, then
+install dependencies:
 
 ```bash
-python -m venv venv
-source venv/bin/activate
+python -m venv .venv
 ```
 
-2. Install the required package:
+PowerShell:
 
 ```bash
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+macOS/Linux:
+
+```bash
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -82,17 +106,20 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
+By default, the application uses `student_results.sqlite3` beside `app.py`.
+It initializes a missing database without overwriting existing records. If
+there is no Admin account, the app displays the first-time setup form.
+
 ## Run Automated Tests
 
-Run the calculation tests from the project directory:
-
 ```bash
-python -m unittest -v
+python -m unittest discover -v
+python -m py_compile app.py auth.py database.py calculations.py csv_import.py setup_demo.py
 ```
 
-The tests cover grade boundaries, total and average marks, percentage,
-Pass/Fail status, highest and lowest marks, tied subjects, and important
-edge cases such as all-zero and all-100 marks.
+The suite covers calculations, validation, authentication and permissions,
+SQLite persistence, result history, audit events, CSV handling, demo setup,
+and first-time Admin setup UI behavior.
 
 ## Git Concepts Practiced
 
@@ -122,9 +149,15 @@ If the selected SQLite database has no administrator account, create the initial
 administrator through the setup form. Use a username of up to 64 characters
 and a password of at least 8 characters. The setup is disabled once an
 administrator exists; existing student accounts and records are preserved.
-Administrators can provision student accounts linked to saved records. Student
-accounts can see their own results and history, but cannot edit results. Do not
-commit account passwords or private configuration files.
+Passwords are hashed with PBKDF2-HMAC-SHA256. First-Admin creation is serialized
+by SQLite, and subsequent Admin registrations are rejected by the backend.
+
+Admins can create, edit, search, filter, and delete academic results; edit
+student identity fields; provision Student accounts linked to saved records;
+review analytics and audit events; and import/export results. Student accounts
+can view their own results and history and download their CSV result, but cannot
+manage results. Result deletion preserves the student identity and prior
+history. Do not commit account passwords or private configuration files.
 
 ### Bulk CSV import
 
@@ -141,9 +174,9 @@ an all-or-nothing batch transaction.
 Administrators can delete an active academic result after confirming the action.
 The associated student identity and prior result-history versions are retained;
 the deleted result is excluded from active analytics. Audit events are recorded
-transactionally for administrator-initiated creation, update, and deletion.
-The Audit Log page is visible to admins only. Login/logout and account
-provisioning are **not yet covered** by audit events.
+transactionally for administrator-initiated creation, update, deletion,
+account provisioning, and bulk import. Admin login, failed login, and logout
+events are also recorded. The Audit Log page is visible to Admins only.
 
 ### Local isolated demo database
 
@@ -168,24 +201,22 @@ The demo setup intentionally refuses to overwrite an existing database. The
 original `seed_demo_data.py` remains available for idempotent synthetic-data
 seeding in an existing database; it does not provision accounts.
 
-### Testing and current limitations
+### Verification
 
 ```bash
-python -m unittest -v
+python -m unittest discover -v
 python -m py_compile app.py database.py auth.py calculations.py csv_import.py setup_demo.py
 ```
 
-The automated suite checks calculations, SQLite operations, authentication,
-seeding, audit authorization, deletion, and CSV parsing. Browser-based UI
-verification and deployment/security review are still required. The interface
-supports editing existing marks through its Result History workflow; changing
-a student's roll number, semester or academic year is not yet supported.
-
 The `.gitignore` excludes SQLite databases, bytecode, and local environment
-folders. Never upload real student data or passwords to a public repository.
+folders, local environment files, and common credential files. Never upload
+real student data, generated demo passwords, or credentials to a public
+repository.
 
-### Final verification notes
+### Version history
 
-Administrators can correct student identity fields from the selected result's history section. Prior versions remain linked by the stable student ID. Audit events now include administrator sign-in, failed administrator sign-in, explicit sign-out, student account provisioning and imported results. Audit search and UTC date filtering operate on the latest 200 matching events. Student accounts can download their own CSV result.
-
-Automated verification: `python -m unittest discover -v` (96 tests passed in the development environment), and `python -m compileall -q .`. Streamlit browser interaction remains a manual release check because Streamlit was unavailable in that environment. Verify both roles, editing, deletion, import, filters and downloads against a separate demo database before release.
+- **8.0 (candidate):** First-time Admin setup, role-specific dashboards,
+  persistent/versioned results, identity editing, audit logging, CSV import and
+  export, PDF report cards, and isolated demo account setup. This candidate has
+  not yet been tagged or released.
+- **6.0:** Previous tagged project version.
