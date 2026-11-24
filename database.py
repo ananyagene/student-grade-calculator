@@ -115,6 +115,18 @@ class StudentDatabase:
                     UNIQUE (history_id, position)
                 );
 
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    audit_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT NOT NULL,
+                    actor_id INTEGER,
+                    actor_username TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    target_reference TEXT NOT NULL,
+                    description TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_audit_time
+                    ON audit_logs(timestamp DESC, audit_id DESC);
+
                 CREATE INDEX IF NOT EXISTS idx_students_identity
                     ON students(roll_number, semester, academic_year);
                 CREATE INDEX IF NOT EXISTS idx_active_results_percentage
@@ -221,15 +233,41 @@ class StudentDatabase:
         finally:
             connection.close()
 
+    def _record_audit(self, connection, account, action, reference, description):
+        """Write the event within the caller's active transaction."""
+        connection.execute(
+            "INSERT INTO audit_logs (timestamp, actor_id, actor_username, "
+            "action, target_reference, description) VALUES (?, ?, ?, ?, ?, ?)",
+            (datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+             account.get("account_id"), account.get("username", "unknown"),
+             action, reference, description),
+        )
+
+    def get_audit_logs_for_account(self, account, action=None, limit=200):
+        if not account or account.get("role") != "ADMIN":
+            return []
+        connection = self.connect()
+        try:
+            query = "SELECT * FROM audit_logs"
+            args = []
+            if action and action != "All":
+                query += " WHERE action = ?"
+                args.append(action)
+            query += " ORDER BY audit_id DESC LIMIT ?"
+            args.append(min(max(int(limit), 1), 500))
+            return [dict(row) for row in connection.execute(query, args)]
+        finally:
+            connection.close()
+
     def save_active_result_for_account(self, account, result):
         if not account or account["role"] != "ADMIN":
             return False
-        return self.save_active_result(result)
+        return self.save_active_result(result, actor=account)
 
     def update_active_result_for_account(self, account, result):
         if not account or account["role"] != "ADMIN":
             return False
-        return self.update_active_result(result)
+        return self.update_active_result(result, actor=account)
 
     def get_student_result_for_account(self, account):
         if not account or account["role"] != "STUDENT":
@@ -330,7 +368,7 @@ class StudentDatabase:
         finally:
             connection.close()
 
-    def save_active_result(self, result):
+    def save_active_result(self, result, actor=None):
         if not self._validate_result(result):
             raise ValueError("Invalid active result data")
         timestamp = self._now()
@@ -415,6 +453,9 @@ class StudentDatabase:
                         "Pass" if int(marks) >= 40 else "Fail",
                     ),
                 )
+            if actor:
+                self._record_audit(connection, actor, "CREATE_RESULT",
+                                   result["roll_number"], "Created academic result")
             connection.commit()
             return True
         except Exception:
@@ -515,7 +556,7 @@ class StudentDatabase:
         finally:
             connection.close()
 
-    def update_active_result(self, new_result):
+    def update_active_result(self, new_result, actor=None):
         if not self._validate_result(new_result):
             raise ValueError("Invalid active result data")
         timestamp = self._now()
@@ -666,6 +707,9 @@ class StudentDatabase:
                         "Pass" if int(marks) >= 40 else "Fail",
                     ),
                 )
+            if actor:
+                self._record_audit(connection, actor, "UPDATE_RESULT",
+                                   new_result["roll_number"], "Updated academic result")
             connection.commit()
             return True
         except Exception:
@@ -698,6 +742,8 @@ class StudentDatabase:
             ).fetchone()
             if not account_exists:
                 connection.execute("DELETE FROM students WHERE student_id = ?", (student_id,))
+            self._record_audit(connection, account, "DELETE_RESULT", roll_number,
+                               "Deleted academic result for " + semester + " / " + academic_year)
             connection.commit()
             return True
         except Exception:

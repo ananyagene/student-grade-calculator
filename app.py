@@ -980,3 +980,18 @@ if filtered_students:
         st.table(grade_distribution)
 else:
     st.info("Save at least one student result to view the grade distribution.")
+
+
+st.subheader("Admin Audit Log", icon=":material/receipt_long:")
+audit_action = st.selectbox("Audit event type", ["All", "CREATE_RESULT", "UPDATE_RESULT", "DELETE_RESULT"])
+audit_rows = student_database.get_audit_logs_for_account(authenticated_account, audit_action)
+if audit_rows:
+    st.dataframe([{
+        "Timestamp (UTC)": row["timestamp"],
+        "Administrator": row["actor_username"],
+        "Action": row["action"],
+        "Record": row["target_reference"],
+        "Description": row["description"],
+    } for row in audit_rows], hide_index=True)
+else:
+    st.caption("No audit events for this selection.")
