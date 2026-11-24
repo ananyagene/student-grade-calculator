@@ -23,7 +23,7 @@ def parse_student_csv(content):
         raise ValueError("Provide 3–10 consecutive subject_N and marks_N column pairs")
     valid, errors, identities = [], [], set()
     for index, row in enumerate(reader, 2):
-        if index > 502:
+        if index > 501:
             raise ValueError("CSV can contain at most 500 students")
         try:
             name = (row["student_name"] or "").strip()
@@ -71,3 +71,20 @@ def csv_template():
     writer.writerow(["Example Student", "EXAMPLE001", "Semester 1", "2026-2027",
                      "Python", 85, "Mathematics", 82, "Data Science", 88, "DSA", 80, "Git & GitHub", 90])
     return buffer.getvalue()
+
+
+def safe_csv_cell(value):
+    if isinstance(value, str) and value.lstrip().startswith(("=", "+", "-", "@")):
+        return "'" + value
+    return value
+
+
+def result_csv(result):
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["Field", "Value", "Grade", "Status"])
+    for key in ("student_name", "roll_number", "semester", "academic_year", "total_marks", "percentage", "overall_grade", "overall_result"):
+        writer.writerow([key, safe_csv_cell(result[key]), "", ""])
+    for name, marks in zip(result["subject_names"], result["subject_marks"]):
+        writer.writerow([safe_csv_cell(name), marks, get_grade(marks), "Pass" if marks >= 40 else "Fail"])
+    return "\ufeff" + buffer.getvalue()

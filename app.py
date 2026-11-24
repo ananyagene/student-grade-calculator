@@ -7,7 +7,7 @@ import streamlit as st
 from report_card import generate_report_card_pdf
 from database import StudentDatabase
 from auth import AuthenticationManager, PBKDF2_ITERATIONS
-from csv_import import parse_student_csv, csv_template
+from csv_import import parse_student_csv, csv_template, result_csv, safe_csv_cell
 
 from calculations import (
     are_subject_marks_valid,
@@ -178,6 +178,9 @@ if authentication_manager.is_student(authenticated_account):
                 "Grade": get_grade(marks),
                 "Pass/Fail Status": "Pass" if marks >= 40 else "Fail",
             })
+        st.caption(f"Total marks: {student_result['total_marks']} / {student_result['subject_count'] * 100}")
+        st.write(student_result["performance_category"], student_result["remarks"])
+        st.download_button("Download My CSV Result", result_csv(student_result), "my_result.csv", "text/csv")
         st.table(subject_table)
 
         history = student_database.get_result_history(
@@ -593,14 +596,14 @@ if calculate_result:
     csv_buffer = io.StringIO()
     csv_writer = csv.writer(csv_buffer)
     csv_writer.writerow(["Field", "Value", "Grade", "Status"])
-    csv_writer.writerow(["Student Name", name, "", ""])
-    csv_writer.writerow(["Roll Number", roll_number, "", ""])
+    csv_writer.writerow(["Student Name", safe_csv_cell(name), "", ""])
+    csv_writer.writerow(["Roll Number", safe_csv_cell(roll_number), "", ""])
     csv_writer.writerow(["Semester", semester, "", ""])
     csv_writer.writerow(["Academic Year", academic_year, "", ""])
     for index in range(subject_count):
         subject_status = get_subject_status(subject_marks[index])
         csv_writer.writerow([
-            subject_names[index],
+            safe_csv_cell(subject_names[index]),
             subject_marks[index],
             get_grade(subject_marks[index]),
             subject_status,

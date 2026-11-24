@@ -244,8 +244,12 @@ class StudentDatabase:
         )
 
     def record_auth_event(self, account, action):
-        with self.connect() as connection:
-            self._record_audit(connection, account or {}, action, "", action.replace("_", " ").title())
+        connection = self.connect()
+        try:
+            with connection:
+                self._record_audit(connection, account or {}, action, "", action.replace("_", " ").title())
+        finally:
+            connection.close()
 
     def get_audit_logs_for_account(self, account, action=None, limit=200):
         if not account or account.get("role") != "ADMIN":
