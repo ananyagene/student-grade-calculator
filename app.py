@@ -38,7 +38,9 @@ from calculations import (
     get_sample_student_data,
 )
 
-DATABASE_PATH = Path(__file__).resolve().with_name("student_results.sqlite3")
+DATABASE_PATH = Path(os.environ.get(
+    "SRMS_DATABASE_PATH", str(Path(__file__).resolve().with_name("student_results.sqlite3"))
+))
 student_database = StudentDatabase(DATABASE_PATH)
 student_database.initialize()
 authentication_manager = AuthenticationManager(student_database)
